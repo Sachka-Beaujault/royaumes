@@ -11,7 +11,7 @@
 | S3 | Les tentatives répétées d'inscription et de connexion sont limitées | Sous-partie 2.3 ; configuration de `better-auth.ts` | `better-auth.ts` limite les inscriptions à 40 et les connexions à 60 par minute et par adresse IP. Vérifié en local : au-delà de 60 tentatives de connexion dans la minute, la réponse est un code 429 « Too many requests ». La limitation reste active sur Vercel même si `AUTH_RATE_LIMIT=off`. Les compteurs sont conservés dans la mémoire de chaque instance. | conforme |
 | S4 | Le cookie de session est inaccessible au JavaScript de la page | Test sur l'attribut `HttpOnly` | Le test réussit, et l'en-tête observé avec curl le confirme : le cookie `better-auth.session_token` porte l'attribut `HttpOnly`. | conforme |
 | S5 | Le cookie de session n'est pas envoyé par les requêtes émises depuis un autre site | Test sur l'attribut `SameSite` | Le test réussit, et l'en-tête observé avec curl le confirme : le cookie porte l'attribut `SameSite=Lax`. | conforme |
-| S6 | Le cookie de session ne circule que sur des connexions chiffrées | Inspection du cookie dans le navigateur ; comportement en local et en production | En local (`http://localhost`), le cookie ne porte pas l'attribut `Secure` (`Max-Age=604800; Path=/; HttpOnly; SameSite=Lax`), la connexion n'étant pas chiffrée. Better Auth l'ajoute lorsque l'application est servie en HTTPS : l'exigence ne pourra être déclarée conforme qu'après le déploiement du TD5. | non conforme |
+| S6 | Le cookie de session ne circule que sur des connexions chiffrées | Inspection du cookie dans le navigateur ; comportement en local et en production | En production, le cookie se nomme `__Secure-better-auth.session_token` et porte l'attribut `Secure` : le navigateur ne le transmet que sur HTTPS. En local, sur `http://localhost`, l'attribut est absent, ce qui est sans conséquence puisque la connexion ne quitte pas le poste. | Conforme |
 | S7 | Le secret de signature n'est pas versionné, et son absence en production empêche le démarrage | `git grep BETTER_AUTH_SECRET` ; fonction `resolveSecret` | `BETTER_AUTH_SECRET` n'apparaît que comme nom de variable : vide dans `.env.example`, lu dans `process.env` par `better-auth.ts`. Aucune valeur n'est versionnée et aucun fichier `.env.local` n'existe. La fonction `resolveSecret` lève une erreur en production sur Vercel si la variable est absente. | conforme |
 | S8 | La connexion ne révèle pas si une adresse est inscrite | Test « répond de la même manière que l'adresse existe ou non » | Le test réussit : un mauvais mot de passe pour une adresse inscrite et une adresse inconnue produisent la même réponse (même code 401, même corps). | conforme |
 | S9 | L'inscription ne révèle pas si une adresse est inscrite | Création d'un compte avec une adresse déjà utilisée | Une inscription avec une adresse déjà utilisée reçoit le code 422 `USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL`, affiché « Cette adresse est déjà utilisée. » : l'inscription révèle l'existence d'un compte. Risque accepté : le jeu ne conserve aucune donnée sensible et n'envoie aucun courrier électronique, ce qui exclut la parade consistant à répondre par courrier dans tous les cas. | risque accepté |
@@ -21,16 +21,15 @@
 | S13 | Les erreurs imprévues ne révèlent aucun détail technique au client | Gestionnaire `onError` de la racine de composition | Le gestionnaire `onError` de `create-api.ts` consigne l'erreur dans les journaux du serveur et ne renvoie au client que `{ error: { code: 'INTERNAL', message: 'Erreur interne' } }`, avec le code 500. | conforme |
 | S14 | La déconnexion invalide la session sur le serveur | Réutilisation d'un cookie après déconnexion | La déconnexion avec l'origine de l'application réussit (`{"success":true}`). Le même cookie, réutilisé ensuite, reçoit une erreur 401 `UNAUTHENTICATED` : la session a été supprimée sur le serveur. | conforme |
 | S15 | Une requête d'authentification accompagnée d'un cookie et émise depuis une autre origine est refusée | Appel de la déconnexion avec un en-tête `origin` étranger | La déconnexion avec l'en-tête `origin: http://site-malveillant.example` est refusée (403 `INVALID_ORIGIN`), de même qu'une requête sans en-tête `origin` (403 `MISSING_OR_NULL_ORIGIN`). Après ces refus, la session était toujours valide. | conforme |
+| S16 | Un flux temps réel n'est accessible qu'aux joueurs connectés, et seulement pour les canaux auxquels ils ont droit | Tests « réserve le temps réel aux joueurs connectés (401) », « refuse l'écoute du village d'un autre joueur (403) » et « refuse un canal qu'aucune règle ne couvre (403) » ; principe de l'accès fermé par défaut dans `channel-policy.ts` | Un visiteur anonyme reçoit une erreur 401, un joueur qui tente d'écouter le village d'un autre joueur une erreur 403. Un canal sans règle est refusé : l'oubli d'une règle par un module futur rend ses canaux inaccessibles, et non publics. | Conforme |
 
 ## Synthèse
 
-13 exigences conformes, 1 non conforme (S6) et 1 en risque accepté (S9).
+16 exigences : 15 conformes, aucune non conforme et 1 en risque accepté (S9). Plus aucune
+exigence n'est en attente de vérification.
 
 Actions décidées :
 
-- S6 : vérifier la présence de l'attribut `Secure` sur le cookie de session lorsque l'application
-  sera servie en HTTPS.
 - S3 : les compteurs de la limitation des tentatives sont conservés dans la mémoire de chaque
   instance, et ne sont donc pas partagés entre instances ; cette limite est consignée dans le
   registre de la dette technique.
-
