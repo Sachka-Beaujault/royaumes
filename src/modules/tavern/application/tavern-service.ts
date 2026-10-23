@@ -7,7 +7,8 @@ import {
   RATE_LIMIT,
 } from '../domain/message'
 import { staleBefore } from '../domain/presence'
-import type { MessageRepository } from './message-repository'
+import type { AuthorGuilds } from './author-guilds'
+import type { MessageRepository, StoredTavernMessage } from './message-repository'
 import type { PresenceRepository } from './presence-repository'
 
 /** Nombre de messages présentés à l'ouverture de la Taverne. */
@@ -20,7 +21,21 @@ export function createTavernService(
   repo: MessageRepository,
   presence: PresenceRepository,
   clock = () => Date.now(),
+  authorGuilds?: AuthorGuilds,
 ) {
+  /**
+   * Ajoute à des messages la guilde actuelle de leurs auteurs, lue une fois par auteur.
+   * Sans lecteur des guildes, aucun auteur n'a de guilde.
+   */
+  async function withGuilds(messages: StoredTavernMessage[]): Promise<TavernMessage[]> {
+    const authors = [...new Set(messages.map((message) => message.authorId))]
+    const guilds = authorGuilds && authors.length > 0 ? await authorGuilds.guildsOf(authors) : {}
+    return messages.map((message) => ({
+      ...message,
+      authorGuild: guilds[message.authorId] ?? null,
+    }))
+  }
+
   /** Publie un message au nom d'un joueur, après validation et limitation. */
   async function post(player: { id: string; name: string }, body: string): Promise<PostResult> {
     const checked = checkBody(body)
@@ -29,12 +44,13 @@ export function createTavernService(
     const recent = await repo.postedSince(player.id, now - RATE_LIMIT.windowMs)
     const limited = checkRate(recent, now)
     if (limited) return { ok: false, error: limited }
-    const message = await repo.add({
+    const stored = await repo.add({
       authorId: player.id,
       authorName: player.name,
       body: checked.body,
       postedAt: now,
     })
+    const [message] = await withGuilds([stored])
     return { ok: true, message }
   }
 
@@ -45,7 +61,7 @@ export function createTavernService(
    */
   async function latest() {
     await repo.removeOlderThan(expiredBefore(clock()))
-    return repo.latest(HISTORY_SIZE)
+    return withGuilds(await repo.latest(HISTORY_SIZE))
   }
 
   /**
@@ -78,7 +94,7 @@ export function createTavernService(
   /** Retire aussitôt un joueur qui quitte la Taverne. */
   const leave = (playerId: string) => presence.remove(playerId)
 
-  return { post, latest, present, heartbeat, leave, purge }
+  return { post, latest, present, heartbeat, leave, purge, withGuilds }
 }
 
 export type TavernService = ReturnType<typeof createTavernService>

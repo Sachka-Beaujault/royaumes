@@ -15,6 +15,7 @@ import {
   GUILD_MESSAGE_POSTED,
   GUILD_RANKING_CHANNEL,
   GUILDS,
+  type GuildId,
   guildChatChannel,
   RUN_CHANNEL_PREFIX,
 } from './contracts'
@@ -133,6 +134,19 @@ export function createGuildReader(store: EventStore) {
     async guildOf(playerId: string) {
       const { state } = await repo.load(playerId)
       return state.guild
+    },
+
+    /**
+     * Guilde actuelle de plusieurs joueurs, par exemple les auteurs des messages de la Taverne ;
+     * un joueur sans guilde est absent du résultat.
+     */
+    async guildsOf(playerIds: string[]) {
+      const guilds: Record<string, GuildId> = {}
+      for (const playerId of playerIds) {
+        const { state } = await repo.load(playerId)
+        if (state.guild) guilds[playerId] = state.guild
+      }
+      return guilds
     },
   }
 }

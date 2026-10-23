@@ -6,6 +6,7 @@
 import type { Db } from '@/platform/db/client'
 import type { ChannelPolicy } from '@/platform/realtime/channel-policy'
 import { createTavernApi } from './api'
+import type { AuthorGuilds } from './application/author-guilds'
 import { createTavernService } from './application/tavern-service'
 import { MESSAGE_POSTED, TAVERN_CHANNEL } from './contracts'
 import { createDrizzleMessageRepository } from './infrastructure/drizzle-message-repository'
@@ -17,15 +18,25 @@ export interface TavernModuleDeps {
   db: Db
   /** Horloge de référence ; l'heure réelle par défaut. */
   clock?: () => number
+  /**
+   * Lecture de la guilde des auteurs de messages, fournie par la racine de composition ;
+   * sans elle, les messages sont présentés sans guilde.
+   */
+  authorGuilds?: AuthorGuilds
 }
 
 /** Nombre maximal de messages transmis à la fois par le canal. */
 const CHANNEL_BATCH = 100
 
 /** Fabrique du module : assemble l'adaptateur, le service, l'API et la règle du canal. */
-export function createTavernModule({ db, clock }: TavernModuleDeps) {
+export function createTavernModule({ db, clock, authorGuilds }: TavernModuleDeps) {
   const repo = createDrizzleMessageRepository(db)
-  const service = createTavernService(repo, createDrizzlePresenceRepository(db), clock)
+  const service = createTavernService(
+    repo,
+    createDrizzlePresenceRepository(db),
+    clock,
+    authorGuilds,
+  )
 
   // Canal de la Taverne : tout joueur connecté peut l'écouter. Il ne lit pas le journal,
   // mais la table des messages ; chaque message y est présenté comme un événement, dont la
@@ -36,7 +47,7 @@ export function createTavernModule({ db, clock }: TavernModuleDeps) {
     canSubscribe: (channel) => channel === TAVERN_CHANNEL,
     source: {
       async read(after) {
-        const fresh = await repo.after(after, CHANNEL_BATCH)
+        const fresh = await service.withGuilds(await repo.after(after, CHANNEL_BATCH))
         return fresh.map((message) => ({
           position: message.id,
           stream: TAVERN_CHANNEL,

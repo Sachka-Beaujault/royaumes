@@ -137,6 +137,7 @@ export function TavernScreen({ userId }: { userId: string }) {
             {messages.map((message) => (
               <li key={message.id} data-mine={message.authorId === userId || undefined}>
                 <span className="muted">{timeOf(message.postedAt)}</span>{' '}
+                {message.authorGuild && <Entity kind={`guild-${message.authorGuild}`} />}{' '}
                 <strong>{message.authorName}</strong> {message.body}
               </li>
             ))}

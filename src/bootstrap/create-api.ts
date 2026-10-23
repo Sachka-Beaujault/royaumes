@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { createDungeonModule } from '@/modules/dungeon'
-import { createGuildModule } from '@/modules/guild'
+import { createGuildModule, createGuildReader } from '@/modules/guild'
 import { createMarketModule } from '@/modules/market'
 import { createRankingModule } from '@/modules/ranking'
 import { createRealmModule, createRemoteRealmModule } from '@/modules/realm'
@@ -86,7 +86,9 @@ export function createApi({
     clock,
   })
 
-  const tavern = createTavernModule({ db, clock })
+  // La Taverne présente la guilde de chaque auteur, que la Guilde lui fournit par son lecteur
+  // public : la Taverne ne dépend d'aucun fichier de la Guilde.
+  const tavern = createTavernModule({ db, clock, authorGuilds: createGuildReader(store) })
   // La Guilde, comme le Marché, déclenche la distribution après ses commandes et ses consultations.
   const guild = createGuildModule({
     store,

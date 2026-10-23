@@ -15,6 +15,11 @@ export interface TavernMessage {
   id: number
   authorId: string
   authorName: string
+  /**
+   * Guilde actuelle de l'auteur, fournie par la Guilde (« red », « green »...) ; null s'il n'en
+   * a choisi aucune. Elle n'est pas conservée avec le message : elle est lue à chaque présentation.
+   */
+  authorGuild: string | null
   body: string
   postedAt: number
 }
