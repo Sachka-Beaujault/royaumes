@@ -2,8 +2,8 @@
 import { hc } from 'hono/client'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { type FormEvent, useCallback, useEffect, useState } from 'react'
-import { useChannel } from '@/platform/realtime/use-channel'
+import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
+import { type ChannelEvent, useChannel } from '@/platform/realtime/use-channel'
 import { Entity } from '@/ui/entity'
 import { useCountdown } from '@/ui/use-countdown'
 import type { GuildApi } from './api'
@@ -12,9 +12,11 @@ import {
   type ChatError,
   dayOf,
   GUILD_INFO,
+  GUILD_RANKING_CHANNEL,
   GUILDS,
   type GuildId,
   type GuildMessage,
+  type GuildRanking,
   guildChatChannel,
   MAX_HEROES,
   MESSAGE_MAX_LENGTH,
@@ -287,6 +289,7 @@ export function GuildScreen({ userId }: { userId: string }) {
         )}
       </section>
       <RiftPanel />
+      <GuildRankingPanel guild={current} />
       <GuildChat key={current} guild={current} userId={userId} />
       <section className="panel" aria-label="Changer de guilde">
         <p>
@@ -714,5 +717,102 @@ export function RiftRun({ runId, userId }: { runId: string; userId: string }) {
 
       {error && <p className="error">{error}</p>}
     </>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Classement des guildes
+// ---------------------------------------------------------------------------
+
+/** Délai entre deux relectures, tant que la projection n'a pas atteint l'événement annoncé. */
+const RETRY_MS = 1_000
+
+/** Nombre maximal de relectures pour un même événement annoncé. */
+const MAX_READS = 10
+
+/**
+ * Classement des guildes : le meilleur score de chacune aujourd'hui, et de tous les temps.
+ * La guilde du joueur y est mise en évidence.
+ */
+function GuildRankingPanel({ guild }: { guild: GuildId }) {
+  const [ranking, setRanking] = useState<GuildRanking | undefined>(undefined)
+
+  // REQUÊTE : la lecture déclenche, côté serveur, le rattrapage de la projection.
+  // Renvoie la position jusqu'à laquelle le classement reçu est à jour ; 0 en cas d'échec.
+  const refresh = useCallback(async () => {
+    const res = await client.ranking.$get()
+    if (!res.ok) return 0
+    const body = await res.json()
+    setRanking(body)
+    return body.position
+  }, [])
+
+  useEffect(() => {
+    refresh()
+  }, [refresh])
+
+  // Position du dernier événement annoncé, et indicateur d'une relecture en cours.
+  const wanted = useRef(0)
+  const following = useRef(false)
+
+  // TEMPS RÉEL : le canal annonce la fin d'une expédition. Comme pour le Classement, le
+  // classement est relu jusqu'à ce que la projection ait atteint la position annoncée.
+  const follow = useCallback(
+    async (event: ChannelEvent) => {
+      wanted.current = Math.max(wanted.current, event.position)
+      if (following.current) return
+      following.current = true
+      try {
+        for (let read = 0; read < MAX_READS; read++) {
+          if ((await refresh()) >= wanted.current) return
+          await new Promise((resolve) => setTimeout(resolve, RETRY_MS))
+        }
+      } finally {
+        following.current = false
+      }
+    },
+    [refresh],
+  )
+
+  useChannel(GUILD_RANKING_CHANNEL, follow)
+
+  if (!ranking) return null
+  return (
+    <section className="panel" aria-label="Classement des guildes">
+      <h2>
+        <Entity kind="ranking" /> Classement des guildes
+      </h2>
+      <p className="muted">
+        Étages franchis par la meilleure expédition de chaque guilde. Une expédition abandonnée
+        n'est comptée que le lendemain matin.
+      </p>
+      <table className="ranking">
+        <thead>
+          <tr>
+            <th>Rang</th>
+            <th>Guilde</th>
+            <th>Aujourd'hui</th>
+            <th>Record</th>
+          </tr>
+        </thead>
+        <tbody>
+          {ranking.guilds.map((standing, index) => (
+            <tr key={standing.guild} aria-current={standing.guild === guild ? 'true' : undefined}>
+              <td>{index + 1}</td>
+              <td>
+                <GuildName guild={standing.guild} />
+              </td>
+              <td>
+                {standing.today}{' '}
+                <span className="muted">
+                  ({standing.todayRuns} expédition{standing.todayRuns > 1 ? 's' : ''})
+                </span>
+              </td>
+              <td>{standing.allTime}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
   )
 }
