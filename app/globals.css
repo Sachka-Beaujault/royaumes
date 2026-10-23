@@ -789,3 +789,51 @@ button.difficulty[aria-pressed='true'] { border-color: var(--guild-bright); back
 .corridor-loot { margin-left: auto; font-family: var(--font-display), serif; color: var(--parchment); }
 .chamber h2 { font-size: 1.4rem; margin: 6px 0 14px; }
 .run-end[data-result='won'] strong { color: var(--gold); }
+
+/* Marché : la mise en vente, puis les étals. */
+.bargain-sides { display: grid; grid-template-columns: 1fr auto 1fr; gap: 14px; align-items: center; margin: 10px 0 16px; }
+@media (max-width: 560px) { .bargain-sides { grid-template-columns: 1fr; } .bargain-arrow { text-align: center; } }
+.bargain-side {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--iron);
+  background: rgb(0 0 0 / 0.25);
+}
+.bargain-side legend { font-family: var(--font-display), serif; font-size: 0.75rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); padding: 0 6px; }
+.bargain-side .amount { width: 7em; text-align: center; font-size: 1.3rem; }
+.bargain-arrow { font-size: 2rem; color: var(--gold); }
+.resource-choice { display: flex; gap: 6px; }
+.resource-choice button { padding: 8px 10px; font-size: 1.3rem; background: rgb(0 0 0 / 0.4); border-color: var(--iron); }
+.resource-choice button[aria-pressed='true'] { border-color: var(--guild-bright); background: color-mix(in srgb, var(--guild) 45%, transparent); }
+
+.stalls { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; margin-top: 12px; }
+.stall {
+  position: relative;
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+  padding: 28px 16px 18px;
+  text-align: center;
+  background: linear-gradient(180deg, var(--panel), var(--stone));
+  border: 1px solid var(--panel-edge);
+  box-shadow: 0 10px 22px rgb(0 0 0 / 0.4);
+}
+/* Auvent rayé de l'étal, aux couleurs de la guilde du joueur. */
+.stall::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 12px;
+  background: repeating-linear-gradient(90deg, var(--guild) 0 18px, var(--parchment) 18px 36px);
+  opacity: 0.8;
+}
+.stall[data-mine='true']::before { background: repeating-linear-gradient(90deg, var(--gold-dim) 0 18px, var(--stone) 18px 36px); }
+.stall p { margin: 0; }
+.stall-seller { font-family: var(--font-display), serif; letter-spacing: 0.08em; color: var(--parchment); }
+.stall-deal { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: center; }
+.lot { display: inline-flex; gap: 10px; }
+.lot-item { display: grid; justify-items: center; font-size: 1.6rem; }
+.lot-item strong { font-family: var(--font-display), serif; font-size: 1.1rem; color: var(--parchment); }

@@ -1,5 +1,6 @@
 'use client'
 import { hc } from 'hono/client'
+import { motion } from 'motion/react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { RESOURCES, type Resource } from '@/modules/realm/contracts'
 import { useChannel } from '@/platform/realtime/use-channel'
@@ -51,18 +52,24 @@ const ERRORS: Record<OfferError['code'] | 'INVALID_INPUT', string> = {
 const RETRY_MS = 1_000
 const MAX_READS = 10
 
-/** Affiche des quantités de ressources : « 60 bois, 30 pierre ». */
-function AmountsText({ amounts }: { amounts: Amounts }) {
+/** Lot de ressources d'un étal : chaque ressource en grand, avec sa quantité. */
+function Lot({ amounts }: { amounts: Amounts }) {
   return (
-    <>
-      {Object.entries(amounts).map(([resource, amount], index) => (
-        <span key={resource}>
-          {index > 0 && ', '}
-          {amount} <Entity kind={resource} />
+    <span className="lot">
+      {Object.entries(amounts).map(([resource, amount]) => (
+        <span key={resource} className="lot-item">
+          <Entity kind={resource} />
+          <strong>{amount}</strong>
         </span>
       ))}
-    </>
+    </span>
   )
+}
+
+/** Temps restant avant l'échéance d'une offre, en heures ou en minutes. */
+function timeLeft(expiresAt: number) {
+  const minutes = Math.max(0, Math.round((expiresAt - Date.now()) / 60_000))
+  return minutes >= 60 ? `${Math.floor(minutes / 60)} h` : `${minutes} min`
 }
 
 /** Compte rendu d'une commande, à partir de la vue de l'offre renvoyée par l'API. */
@@ -146,96 +153,116 @@ export function MarketScreen() {
   const mine = list?.offers.filter((offer) => offer.mine) ?? []
   const others = list?.offers.filter((offer) => !offer.mine) ?? []
 
-  /** Sélecteur d'une ressource et de sa quantité. */
+  /** Sélecteur d'une ressource, par ses icônes, et de sa quantité. */
   const picker = (
     label: string,
     value: { resource: Resource; amount: number },
     onChange: (value: { resource: Resource; amount: number }) => void,
   ) => (
-    <>
-      <label htmlFor={`${label}-amount`}>{label}</label>
+    <fieldset className="bargain-side">
+      <legend>{label}</legend>
+      <div className="resource-choice">
+        {RESOURCES.map((resource) => (
+          <button
+            key={resource}
+            type="button"
+            aria-pressed={value.resource === resource}
+            title={look(resource).label}
+            onClick={() => onChange({ ...value, resource })}
+          >
+            <Entity kind={resource} />
+          </button>
+        ))}
+      </div>
       <input
-        id={`${label}-amount`}
+        aria-label={`Quantité : ${label}`}
         className="amount"
         type="number"
         min={1}
         value={value.amount}
         onChange={(e) => onChange({ ...value, amount: Number(e.target.value) })}
       />
-      <select
-        aria-label={`Ressource : ${label}`}
-        value={value.resource}
-        onChange={(e) => onChange({ ...value, resource: e.target.value as Resource })}
-      >
-        {RESOURCES.map((resource) => (
-          <option key={resource} value={resource}>
-            {look(resource).label}
-          </option>
-        ))}
-      </select>
-    </>
+      <span className="muted">{look(value.resource).label}</span>
+    </fieldset>
   )
 
   return (
     <>
-      <div className="row" style={{ justifyContent: 'space-between' }}>
-        <h1>
-          <Entity kind="market" /> Marché
-        </h1>
+      <header className="page-header">
+        <div>
+          <p className="page-kicker">Place des marchands</p>
+          <h1>
+            <Entity kind="market" /> Marché
+          </h1>
+        </div>
         <span className="status" data-status={status}>
           {STATUS_LABELS[status]}
         </span>
-      </div>
+      </header>
 
-      <div className="panel row">
-        {picker('Je cède', give, setGive)}
-        {picker('contre', want, setWant)}
-        <button type="button" onClick={publish}>
-          Publier l'offre
+      <section className="panel bargain" aria-label="Mettre un lot en vente">
+        <h2>Mettre un lot en vente</h2>
+        <div className="bargain-sides">
+          {picker('Je cède', give, setGive)}
+          <span className="bargain-arrow" aria-hidden="true">
+            ⇄
+          </span>
+          {picker('Contre', want, setWant)}
+        </div>
+        <button type="button" className="big-button" onClick={publish}>
+          <Entity kind="market" /> Publier l'offre
         </button>
-      </div>
-      {message && (
-        <p className={message.error ? 'error' : 'muted'} role="status">
-          {message.text}
-        </p>
-      )}
-
-      <section className="panel" aria-label="Vos offres">
-        <h2>Vos offres</h2>
-        {mine.length === 0 && <p className="muted">Aucune offre en cours.</p>}
-        <ul className="offers">
-          {mine.map((offer) => (
-            <li key={offer.offerId}>
-              <span>
-                <AmountsText amounts={offer.give} /> contre <AmountsText amounts={offer.want} />{' '}
-                <span className="muted">({OFFER_STATUS[offer.status]})</span>
-              </span>
-              {offer.status === 'open' && (
-                <button type="button" onClick={() => withdrawOffer(offer.offerId)}>
-                  Retirer
-                </button>
-              )}
-            </li>
-          ))}
-        </ul>
+        {message && (
+          <p className={message.error ? 'notice error' : 'notice'} role="status">
+            {message.text}
+          </p>
+        )}
       </section>
 
-      <section className="panel" aria-label="Offres des autres joueurs">
-        <h2>Offres des autres joueurs</h2>
-        {others.length === 0 && <p className="muted">Aucune offre disponible.</p>}
-        <ul className="offers">
-          {others.map((offer) => (
-            <li key={offer.offerId}>
-              <span>
-                {offer.sellerName} cède <AmountsText amounts={offer.give} /> contre{' '}
-                <AmountsText amounts={offer.want} />
-              </span>
-              <button type="button" onClick={() => acceptOffer(offer.offerId)}>
-                Accepter
+      <h2 className="section-title">Les étals</h2>
+      {others.length === 0 && <p className="muted">Aucune offre disponible.</p>}
+      <section className="stalls" aria-label="Offres des autres joueurs">
+        {others.map((offer, index) => (
+          <motion.article
+            key={offer.offerId}
+            className="stall"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.05 }}
+          >
+            <p className="stall-seller">{offer.sellerName}</p>
+            <div className="stall-deal">
+              <Lot amounts={offer.give} />
+              <span className="muted">contre</span>
+              <Lot amounts={offer.want} />
+            </div>
+            <p className="muted">Encore {timeLeft(offer.expiresAt)}</p>
+            <button type="button" onClick={() => acceptOffer(offer.offerId)}>
+              Accepter
+            </button>
+          </motion.article>
+        ))}
+      </section>
+
+      <h2 className="section-title">Vos offres</h2>
+      {mine.length === 0 && <p className="muted">Aucune offre en cours.</p>}
+      <section className="stalls" aria-label="Vos offres">
+        {mine.map((offer) => (
+          <article key={offer.offerId} className="stall" data-mine="true">
+            <p className="stall-seller">{OFFER_STATUS[offer.status]}</p>
+            <div className="stall-deal">
+              <Lot amounts={offer.give} />
+              <span className="muted">contre</span>
+              <Lot amounts={offer.want} />
+            </div>
+            <p className="muted">Encore {timeLeft(offer.expiresAt)}</p>
+            {offer.status === 'open' && (
+              <button type="button" onClick={() => withdrawOffer(offer.offerId)}>
+                Retirer
               </button>
-            </li>
-          ))}
-        </ul>
+            )}
+          </article>
+        ))}
       </section>
     </>
   )
