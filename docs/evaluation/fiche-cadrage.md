@@ -4,6 +4,9 @@
 - Date : 2026-10-23
 - Nom technique du module : `guild`
 - Validée par l'enseignant le :
+- Mise à jour le : 2026-10-23, au rendu : exposition du lecteur des guildes, portée de la
+  redirection, liste des expéditions ouvertes et clôture des expéditions abandonnées (voir le
+  document de rendu, « Écarts avec la fiche de cadrage »)
 
 ## L'idée
 
@@ -93,7 +96,8 @@ Taverne
 | Consulter le classement des guildes | Lecture | `GET /api/guild/ranking` |
 
 Un joueur connecté sans guilde est redirigé vers la page de la Guilde, quelle que soit la
-page du jeu demandée.
+page du jeu demandée. Cette redirection est assurée par l'interface du jeu : les API des
+autres modules ne vérifient pas l'appartenance à une guilde.
 
 ## Le stockage envisagé
 
@@ -108,6 +112,9 @@ Un stockage mixte, chaque donnée selon sa nature.
   ce que ne permet pas un journal en ajout seul.
 - Le classement des guildes est un modèle de lecture du schéma `guild`, tenu par une
   projection du journal.
+- La liste des expéditions ouvertes est un modèle de lecture du schéma `guild`, tenu par une
+  projection du journal ; elle permet aussi à la tâche quotidienne de clôturer les expéditions
+  abandonnées des jours passés, afin que leur score entre au classement.
 
 ## La communication avec les modules existants
 
@@ -117,8 +124,9 @@ Un stockage mixte, chaque donnée selon sa nature.
   Guilde. Ces échanges forment une saga, dont les gestionnaires sont idempotents. Le Village
   n'est pas modifié : il expose déjà ces sujets dans ses contrats.
 - **Taverne** : elle reçoit de la Guilde, par un port injecté par la racine de composition,
-  la guilde de chaque auteur de message. La Guilde l'expose par ses contrats ; la Taverne
-  ne dépend d'aucun fichier interne de la Guilde.
+  la guilde de chaque auteur de message. La Guilde l'expose par son entrée publique serveur
+  (`index.ts`), le lecteur des appartenances étant du code serveur ; la Taverne ne dépend
+  d'aucun fichier de la Guilde.
 
 ## Les données personnelles
 

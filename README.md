@@ -219,6 +219,7 @@ sans la première ; sans la seconde, la route des tâches quotidiennes reste fer
 - [Revue de conformité au RGPD](docs/rgpd/revue-conformite.md)
 - [Bilan technique](docs/bilan-technique.md)
 - [Fiche de cadrage du module Guilde](docs/evaluation/fiche-cadrage.md)
+- [Document de rendu de l'évaluation](docs/evaluation/rendu.md)
 
 ## Conventions
 
