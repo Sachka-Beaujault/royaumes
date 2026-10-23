@@ -265,3 +265,24 @@ describe('Faille - étages sans fin (règles 14 et 15)', () => {
     expect(state.floorsCleared).toBeLessThan(100)
   })
 })
+
+describe('Faille - clôture des expéditions des jours passés', () => {
+  const NEXT_DAY = T0 + 24 * 60 * 60_000
+
+  it('achève sans score une expédition restée au salon un jour passé', () => {
+    const { events } = play(lobby, { type: 'CloseRun' }, NEXT_DAY)
+    expect(events).toMatchObject([
+      { type: 'RunEnded', data: { guild: 'red', day: DAY, floorsCleared: 0 } },
+    ])
+  })
+
+  it('laisse au salon une expédition du jour même', () => {
+    expect(decide(lobby, { type: 'CloseRun' }, T0 + 60_000)).toEqual({ ok: true, events: [] })
+  })
+
+  it('mène à son terme une expédition abandonnée en combat', () => {
+    const { state, events } = play(started, { type: 'CloseRun' }, NEXT_DAY)
+    expect(state.phase).toBe('ended')
+    expect(events.at(-1)?.type).toBe('RunEnded')
+  })
+})

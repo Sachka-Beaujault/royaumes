@@ -100,7 +100,7 @@ describe('API du chat de guilde', () => {
     const res = await api.api.request('/api/cron/daily', {
       headers: { authorization: `Bearer ${TEST_CRON_SECRET}` },
     })
-    expect((await res.json()).guild).toEqual({ ok: true, result: { messages: 1 } })
+    expect((await res.json()).guild).toEqual({ ok: true, result: { messages: 1, runs: 0 } })
     expect(await query(api, sql`SELECT * FROM guild.messages`)).toEqual([])
   })
 

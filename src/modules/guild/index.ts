@@ -11,11 +11,19 @@ import { createGuildApi } from './api'
 import { createChatService } from './application/chat-service'
 import { createGuildService } from './application/guild-service'
 import { createRiftService } from './application/rift-service'
-import { GUILD_MESSAGE_POSTED, GUILDS, guildChatChannel, RUN_CHANNEL_PREFIX } from './contracts'
+import {
+  GUILD_MESSAGE_POSTED,
+  GUILD_RANKING_CHANNEL,
+  GUILDS,
+  guildChatChannel,
+  RUN_CHANNEL_PREFIX,
+} from './contracts'
 import { createDrizzleChatRepository } from './infrastructure/drizzle-chat-repository'
+import { createDrizzleGuildRankingReader } from './infrastructure/drizzle-guild-ranking-reader'
 import { createDrizzleOpenRunsReader } from './infrastructure/drizzle-open-runs-reader'
 import { createEventStoreMemberRepository } from './infrastructure/event-store-member-repository'
 import { createEventStoreRunRepository } from './infrastructure/event-store-run-repository'
+import { guildRankingProjection } from './infrastructure/ranking-projection'
 import { createGuildHandlers } from './messages'
 import { createGuildPersonalData } from './personal-data'
 
@@ -46,6 +54,7 @@ export function createGuildModule({ store, db, projections, dispatch, clock }: G
   const chat = createChatService(chatRepo, members, clock)
   const openRuns = createDrizzleOpenRunsReader(db, projections)
   const rift = createRiftService(createEventStoreRunRepository(store), openRuns, service, { clock })
+  const ranking = createDrizzleGuildRankingReader(db, projections)
 
   // Un canal par chat de guilde, réservé à ses membres : l'appartenance est relue dans le
   // journal à chaque abonnement. Comme celui de la Taverne, il ne lit pas le journal, mais la
@@ -87,12 +96,24 @@ export function createGuildModule({ store, db, projections, dispatch, clock }: G
     },
   })
 
+  // Canal du classement des guildes : tout joueur connecté peut l'écouter. Comme celui du
+  // Classement, c'est un canal global et discret, qui annonce les événements appliqués par la
+  // projection : l'interface relit le classement jusqu'à la position annoncée.
+  channelPolicies.push({
+    prefix: GUILD_RANKING_CHANNEL,
+    canSubscribe: (channel) => channel === GUILD_RANKING_CHANNEL,
+    redact: true,
+    global: { types: guildRankingProjection.eventTypes },
+  })
+
   // La tâche quotidienne est confiée à la racine de composition, qui la fait exécuter
   // par la tâche planifiée de Vercel.
   return {
-    api: createGuildApi(service, chat, rift),
+    api: createGuildApi(service, chat, rift, ranking),
     channelPolicies,
-    dailyTask: chat.purge,
+    // Tâche quotidienne : durée de conservation des messages, et clôture des expéditions
+    // abandonnées des jours passés.
+    dailyTask: async () => ({ ...(await chat.purge()), ...(await rift.closeAbandoned()) }),
     handlers: createGuildHandlers(service),
     personalData: createGuildPersonalData(store, db),
   }
@@ -101,6 +122,10 @@ export function createGuildModule({ store, db, projections, dispatch, clock }: G
 /**
  * Lecture de la guilde d'un joueur, pour les pages rendues sur le serveur : la mise en page du
  * jeu y vérifie qu'un joueur a choisi sa guilde avant de lui présenter les autres pages.
+ *
+ * DETTE TECHNIQUE (docs/qualite/dette-technique.md, DT-019) : la guilde est reconstruite à
+ * partir du flux du joueur à chaque page affichée ; ce flux grandit d'une participation à la
+ * Faille par jour de jeu.
  */
 export function createGuildReader(store: EventStore) {
   const repo = createEventStoreMemberRepository(store)

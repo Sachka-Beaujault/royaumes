@@ -23,9 +23,24 @@ export function createDrizzleOpenRunsReader(db: Db, projections: ProjectionRunne
         })
         .from(openRuns)
         .where(
-          and(eq(openRuns.guild, guild), eq(openRuns.day, day), lt(openRuns.heroCount, MAX_HEROES)),
+          and(
+            eq(openRuns.guild, guild),
+            eq(openRuns.day, day),
+            eq(openRuns.status, 'lobby'),
+            lt(openRuns.heroCount, MAX_HEROES),
+          ),
         )
         .orderBy(desc(openRuns.createdAt))
+    },
+
+    async unfinishedBefore(day) {
+      await projections.catchUp(openRunsProjection)
+      // Les jours sont comparés comme des chaînes : la forme AAAA-MM-JJ suit l'ordre des dates.
+      const rows = await db
+        .select({ runId: openRuns.runId })
+        .from(openRuns)
+        .where(lt(openRuns.day, day))
+      return rows.map((row) => row.runId)
     },
   }
 }

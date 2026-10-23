@@ -115,3 +115,28 @@ export const DAY_STREAM_PREFIX = 'guild-day-'
 
 /** Nom du flux d'un jour de la Faille. */
 export const dayStream = (day: string) => `${DAY_STREAM_PREFIX}${day}`
+
+// ---------------------------------------------------------------------------
+// Classement des guildes
+// ---------------------------------------------------------------------------
+
+/** Place d'une guilde au classement : ses meilleurs scores, du jour et de tous les temps. */
+export interface GuildStanding {
+  guild: GuildId
+  /** Meilleur nombre d'étages franchis par une expédition de la guilde aujourd'hui. */
+  today: number
+  todayRuns: number
+  /** Meilleur nombre d'étages franchis par une expédition de la guilde, tous jours confondus. */
+  allTime: number
+  allTimeRuns: number
+}
+
+/** Classement renvoyé par l'API, avec la position du journal jusqu'à laquelle il est à jour. */
+export interface GuildRanking {
+  position: number
+  day: string
+  guilds: GuildStanding[]
+}
+
+/** Nom du canal temps réel global du classement des guildes. */
+export const GUILD_RANKING_CHANNEL = 'guild-ranking'

@@ -150,7 +150,26 @@ export function createRiftService(
     }
   }
 
-  return { execute, open, join, getView, overview }
+  /**
+   * Tâche quotidienne : clôture les expéditions des jours passés qui n'ont pas enregistré leur
+   * fin. Une expédition abandonnée en combat est menée à son terme, chacune de ses manches étant
+   * résolue à son échéance ; une expédition restée au salon s'achève sans score. Leur fin entre
+   * ainsi dans le journal, et donc au classement des guildes.
+   *
+   * DETTE TECHNIQUE (docs/qualite/dette-technique.md, DT-017) : toutes les expéditions sont
+   * clôturées en une seule exécution, sans limite ; un grand nombre d'expéditions abandonnées
+   * pourrait dépasser la durée maximale d'une fonction.
+   */
+  async function closeAbandoned() {
+    const unfinished = await openRuns.unfinishedBefore(dayOf(clock()))
+    for (const runId of unfinished) await execute(runId, '', { type: 'CloseRun' })
+    return { runs: unfinished.length }
+  }
+
+  /** Jour de jeu en cours, selon l'horloge du service. */
+  const today = () => dayOf(clock())
+
+  return { execute, open, join, getView, overview, closeAbandoned, today }
 }
 
 /** Type du service, déduit de sa fabrique : utilisé par l'API du module. */

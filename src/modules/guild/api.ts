@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import type { AppEnv } from '@/platform/http/types'
 import { validateJson } from '@/platform/http/validate'
 import type { ChatService } from './application/chat-service'
+import type { GuildRankingReader } from './application/guild-ranking-reader'
 import type { GuildService } from './application/guild-service'
 import type { RiftError, RiftService } from './application/rift-service'
 import {
@@ -54,7 +55,12 @@ const RIFT_STATUS: Record<RiftError['code'], 403 | 404 | 409 | 422> = {
  * Le joueur est toujours celui que l'authentification a identifié : aucune route
  * n'accepte un identifiant de joueur dans la requête.
  */
-export function createGuildApi(service: GuildService, chat: ChatService, rift: RiftService) {
+export function createGuildApi(
+  service: GuildService,
+  chat: ChatService,
+  rift: RiftService,
+  ranking: GuildRankingReader,
+) {
   return (
     new Hono<AppEnv>()
       // Appartenance du joueur : sa guilde, et sa demande de changement en cours.
@@ -95,6 +101,9 @@ export function createGuildApi(service: GuildService, chat: ChatService, rift: R
         }
         return c.json({ error: result.error }, CHAT_STATUS[result.error.code])
       })
+
+      // Classement des guildes : le meilleur score du jour, et de tous les temps.
+      .get('/ranking', async (c) => c.json(await ranking.standings(rift.today())))
 
       // La Faille du jour et des jours suivants, et les expéditions ouvertes de la guilde.
       .get('/rift', async (c) => c.json(await rift.overview(c.var.userId)))

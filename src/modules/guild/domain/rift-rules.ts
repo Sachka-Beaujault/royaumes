@@ -6,6 +6,7 @@
  * dépend que de la graine du jour et du numéro de l'étage : toutes les guildes affrontent la
  * même Faille, quel que soit le nombre de leurs héros (règle 10).
  */
+import { dayOf } from './calendar'
 import type { GuildId } from './catalog'
 import { mix, pick, type Random, randomInt, seeded } from './random'
 import {
@@ -60,6 +61,8 @@ export type RunCommand =
   | { type: 'SubmitAction'; playerId: string; round: number; action: RunAction }
   // Commande d'échéance : n'a pas d'autre effet que d'enregistrer les manches échues.
   | { type: 'CheckDeadline' }
+  // Clôture d'une expédition d'un jour passé, par la tâche quotidienne.
+  | { type: 'CloseRun' }
 
 export type RunError =
   | { code: 'RUN_NOT_FOUND' }
@@ -344,6 +347,22 @@ function decideCommand(state: RunState, command: RunCommand, now: number): RunDe
     case 'CheckDeadline':
       // Les échéances passées ont déjà été traitées par decide : il n'y a rien d'autre à faire.
       return accept()
+
+    case 'CloseRun':
+      // Une expédition lancée a déjà été menée à son terme par decide : ses héros, qui ne
+      // choisissent plus rien, se sont défendus à chaque échéance jusqu'à tomber. Une expédition
+      // restée au salon un jour passé s'achève sans avoir franchi aucun étage.
+      if (state.phase !== 'lobby' || dayOf(now) <= state.day) return accept()
+      return accept({
+        type: 'RunEnded',
+        data: {
+          guild: state.guild,
+          day: state.day,
+          floorsCleared: 0,
+          heroIds: state.heroes.map((hero) => hero.id),
+          at: now,
+        },
+      })
   }
 }
 

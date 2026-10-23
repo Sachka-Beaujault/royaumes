@@ -11,10 +11,11 @@ const runIdOf = (event: StoredEvent) => event.stream.slice(RUN_CHANNEL_PREFIX.le
 /**
  * Projection des expéditions ouvertes de la Faille, sur le modèle de celle du Donjon. Elle lit
  * les propres événements du module : ils sont donc typés par le domaine.
+ * Version 2 : les expéditions lancées sont conservées jusqu'à leur fin, pour leur clôture.
  */
 export const openRunsProjection: Projection = {
   name: 'guild-open-runs',
-  version: 1,
+  version: 2,
   eventTypes: ['RunOpened', 'HeroJoined', 'RunStarted', 'RunEnded'],
 
   async apply(stored, tx) {
@@ -42,8 +43,11 @@ export const openRunsProjection: Projection = {
           .where(eq(openRuns.runId, runId))
         return
 
-      // Une expédition lancée, ou terminée, ne peut plus être rejointe.
+      // Une expédition lancée ne peut plus être rejointe, mais n'est pas encore terminée.
       case 'RunStarted':
+        await tx.update(openRuns).set({ status: 'running' }).where(eq(openRuns.runId, runId))
+        return
+
       case 'RunEnded':
         await tx.delete(openRuns).where(eq(openRuns.runId, runId))
         return

@@ -34,6 +34,9 @@ export function AppShell({
 }) {
   const pathname = usePathname()
   const router = useRouter()
+  // DETTE TECHNIQUE (docs/qualite/dette-technique.md, DT-018) : le choix de la guilde n'est
+  // imposé que par l'interface ; les routes de l'API des autres modules restent accessibles à
+  // un joueur qui n'en a pas choisi.
   const allowed = hasGuild || pathname.startsWith(GUILD_PAGE) || pathname === '/account'
 
   useEffect(() => {
