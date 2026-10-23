@@ -78,7 +78,7 @@ export function RankingScreen({ userId }: { userId: string }) {
         <div>
           <p className="page-kicker">Les grands noms du royaume</p>
           <h1>
-            <Entity kind="ranking" /> Classement
+            <Entity kind="ranking" decorative /> Classement
           </h1>
         </div>
         <span className="status" data-status={status}>

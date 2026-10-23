@@ -1,6 +1,10 @@
+import type { Metadata } from 'next'
 import { headers } from 'next/headers'
 import { currentUser } from '@/bootstrap/server'
 import { DungeonGame } from '@/modules/dungeon/ui'
+
+/** Titre de l'onglet, complété par le nom du jeu (app/layout.tsx). */
+export const metadata: Metadata = { title: 'Expédition du Donjon' }
 
 /**
  * Page d'une expédition. Son adresse contient l'identifiant de l'expédition :

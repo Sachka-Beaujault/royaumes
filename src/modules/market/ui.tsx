@@ -192,7 +192,7 @@ export function MarketScreen() {
         <div>
           <p className="page-kicker">Place des marchands</p>
           <h1>
-            <Entity kind="market" /> Marché
+            <Entity kind="market" decorative /> Marché
           </h1>
         </div>
         <span className="status" data-status={status}>
@@ -210,7 +210,7 @@ export function MarketScreen() {
           {picker('Contre', want, setWant)}
         </div>
         <button type="button" className="big-button" onClick={publish}>
-          <Entity kind="market" /> Publier l'offre
+          <Entity kind="market" decorative /> Publier l'offre
         </button>
         {message && (
           <p className={message.error ? 'notice error' : 'notice'} role="status">

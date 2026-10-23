@@ -38,7 +38,7 @@ export function AccountScreen() {
         <div>
           <p className="page-kicker">Votre registre</p>
           <h1>
-            <Entity kind="quill" /> Mes données
+            <Entity kind="quill" decorative /> Mes données
           </h1>
         </div>
       </header>

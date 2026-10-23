@@ -129,7 +129,7 @@ export function VillageScreen({ userId }: { userId: string }) {
           }}
         >
           <label htmlFor="name">
-            <Entity kind="quill" /> Nom du village
+            <Entity kind="quill" decorative /> Nom du village
           </label>
           <input
             id="name"
@@ -141,7 +141,7 @@ export function VillageScreen({ userId }: { userId: string }) {
             autoComplete="off"
           />
           <button type="submit" className="seal-button" disabled={sealing}>
-            <Entity kind="seal" /> Sceller la charte
+            <Entity kind="seal" decorative /> Sceller la charte
           </button>
           {error && <p className="error">{error}</p>}
         </form>
@@ -169,7 +169,7 @@ export function VillageScreen({ userId }: { userId: string }) {
         <div>
           <p className="page-kicker">Votre domaine</p>
           <h1>
-            <Entity kind="village" /> {view.name}
+            <Entity kind="village" decorative /> {view.name}
           </h1>
         </div>
         <span className="status" data-status={status}>

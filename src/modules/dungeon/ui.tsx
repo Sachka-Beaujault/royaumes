@@ -95,7 +95,7 @@ export function DungeonLobby() {
         <div>
           <p className="page-kicker">Sous les ruines du royaume</p>
           <h1>
-            <Entity kind="dungeon" /> Donjon
+            <Entity kind="dungeon" decorative /> Donjon
           </h1>
         </div>
       </header>
@@ -119,7 +119,8 @@ export function DungeonLobby() {
         ))}
       </section>
       <button type="button" className="big-button" onClick={open}>
-        <Entity kind="door" /> Ouvrir une expédition ({DIFFICULTY_LABELS[difficulty].toLowerCase()})
+        <Entity kind="door" decorative /> Ouvrir une expédition (
+        {DIFFICULTY_LABELS[difficulty].toLowerCase()})
       </button>
 
       <section className="panel" aria-label="Expéditions ouvertes">
@@ -244,7 +245,7 @@ export function DungeonGame({ gameId, userId }: { gameId: string; userId: string
           Expédition{view && ` · ${DIFFICULTY_LABELS[view.difficulty].toLowerCase()}`}
         </p>
         <h1>
-          <Entity kind="dungeon" /> Donjon
+          <Entity kind="dungeon" decorative /> Donjon
         </h1>
       </div>
       {view?.isMember && (
@@ -333,12 +334,12 @@ export function DungeonGame({ gameId, userId }: { gameId: string; userId: string
             )}
             {view.isHost && view.heroes.length < MAX_HEROES && (
               <button type="button" onClick={addCompanion}>
-                <Entity kind="companion" /> Ajouter un compagnon
+                <Entity kind="companion" decorative /> Ajouter un compagnon
               </button>
             )}
             {view.isHost && (
               <button type="button" className="big-button" onClick={start}>
-                <Entity kind="door" /> Entrer dans le donjon
+                <Entity kind="door" decorative /> Entrer dans le donjon
               </button>
             )}
           </div>
@@ -378,7 +379,7 @@ export function DungeonGame({ gameId, userId }: { gameId: string; userId: string
           </h2>
           {view.turnHeroId === userId ? (
             <button type="button" className="big-button" onClick={openDoor}>
-              <Entity kind="door" /> Ouvrir la porte suivante
+              <Entity kind="door" decorative /> Ouvrir la porte suivante
             </button>
           ) : (
             <p className="muted">Au tour de {nameOf(view.turnHeroId ?? '')} d'ouvrir la porte.</p>
@@ -444,11 +445,12 @@ export function DungeonGame({ gameId, userId }: { gameId: string; userId: string
                     type="button"
                     onClick={() => act({ type: 'attack', target: monster.id })}
                   >
-                    <Entity kind="attacker" /> Attaquer {monsterName(monster, view.monsters)}
+                    <Entity kind="attacker" decorative /> Attaquer{' '}
+                    {monsterName(monster, view.monsters)}
                   </button>
                 ))}
                 <button type="button" onClick={() => act({ type: 'defend' })}>
-                  <Entity kind="tank" /> Se défendre
+                  <Entity kind="tank" decorative /> Se défendre
                 </button>
                 {standingHeroes.map((hero) => (
                   <button
@@ -456,7 +458,7 @@ export function DungeonGame({ gameId, userId }: { gameId: string; userId: string
                     type="button"
                     onClick={() => act({ type: 'heal', target: hero.id })}
                   >
-                    <Entity kind="healer" /> Soigner {hero.name}
+                    <Entity kind="healer" decorative /> Soigner {hero.name}
                   </button>
                 ))}
               </div>

@@ -1,6 +1,10 @@
+import type { Metadata } from 'next'
 import { headers } from 'next/headers'
 import { currentUser } from '@/bootstrap/server'
 import { VillageScreen } from '@/modules/realm/ui'
+
+/** Titre de l'onglet, complété par le nom du jeu (app/layout.tsx). */
+export const metadata: Metadata = { title: 'Village' }
 
 /**
  * Page du Village. Elle transmet au composant l'identifiant du joueur connecté,

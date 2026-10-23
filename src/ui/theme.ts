@@ -24,6 +24,7 @@ import {
   GiHoodedFigure,
   GiLaurelsTrophy,
   GiMineWagon,
+  GiMoon,
   GiOak,
   GiPortal,
   GiQuillInk,
@@ -33,6 +34,7 @@ import {
   GiSpectre,
   GiStoneBlock,
   GiStonePile,
+  GiSun,
   GiTroll,
   GiTwoCoins,
   GiVisoredHelm,
@@ -40,6 +42,7 @@ import {
   GiWaxSeal,
   GiWoodenDoor,
   GiWoodPile,
+  GiYinYang,
 } from 'react-icons/gi'
 
 export interface Look {
@@ -81,6 +84,9 @@ export const theme: Record<string, Look> = {
   warden: { icon: GiBlackKnightHelm, label: 'Gardien de la Faille' },
   seal: { icon: GiWaxSeal, label: 'Sceau' },
   quill: { icon: GiQuillInk, label: 'Plume' },
+  'theme-auto': { icon: GiYinYang, label: 'Apparence du système' },
+  'theme-light': { icon: GiSun, label: 'Mode clair' },
+  'theme-dark': { icon: GiMoon, label: 'Mode sombre' },
 }
 
 /** Apparence d'une entité ; une apparence neutre si l'entité n'est pas décrite. */

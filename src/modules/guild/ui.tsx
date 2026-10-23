@@ -222,7 +222,7 @@ export function GuildScreen({ userId }: { userId: string }) {
 
   const title = (
     <h1>
-      <Entity kind="guild" /> Guildes
+      <Entity kind="guild" decorative /> Guildes
     </h1>
   )
 
@@ -353,16 +353,30 @@ const ROLE_HINTS: Record<Role, string> = {
   attacker: 'inflige les plus lourds dégâts',
 }
 
-/** Liste de choix du rôle, avec ses caractéristiques. */
+/** Choix du rôle : une carte par rôle, avec son icône, ses points de vie et son effet. */
 function RoleSelect({ value, onChange }: { value: Role; onChange: (role: Role) => void }) {
   return (
-    <select aria-label="Rôle" value={value} onChange={(e) => onChange(e.target.value as Role)}>
+    <fieldset className="roles">
+      <legend className="sr-only">Votre rôle</legend>
       {ROLES.map((role) => (
-        <option key={role} value={role}>
-          {ROLE_LABELS[role]} : {ROLE_STATS[role].hp} PV, {ROLE_HINTS[role]}
-        </option>
+        <button
+          key={role}
+          type="button"
+          className="role"
+          aria-pressed={value === role}
+          onClick={() => onChange(role)}
+        >
+          <span className="role-icon">
+            <Entity kind={role} decorative />
+          </span>
+          <span className="role-name">{ROLE_LABELS[role]}</span>
+          <span className="role-stats">
+            {ROLE_STATS[role].hp} PV · {ROLE_STATS[role].attack} d'attaque
+          </span>
+          <span className="role-hint">{ROLE_HINTS[role]}</span>
+        </button>
       ))}
-    </select>
+    </fieldset>
   )
 }
 
@@ -423,7 +437,7 @@ function RiftPanel() {
         <div className="rift-cta">
           <RoleSelect value={role} onChange={setRole} />
           <button type="button" onClick={open}>
-            <Entity kind="rift" /> Ouvrir une expédition
+            <Entity kind="rift" decorative /> Ouvrir une expédition
           </button>
         </div>
       )}
@@ -560,7 +574,7 @@ export function RiftRun({ runId, userId }: { runId: string; userId: string }) {
           )}
         </p>
         <h1>
-          <Entity kind="rift" /> {view?.name ?? 'La Faille'}
+          <Entity kind="rift" decorative /> {view?.name ?? 'La Faille'}
         </h1>
       </div>
       {view?.isMember && (
@@ -630,7 +644,7 @@ export function RiftRun({ runId, userId }: { runId: string; userId: string }) {
           )}
           {view.isHost && (
             <button type="button" className="big-button" onClick={start}>
-              <Entity kind="rift" /> Entrer dans la Faille
+              <Entity kind="rift" decorative /> Entrer dans la Faille
             </button>
           )}
           {view.isMember && !view.isHost && (
@@ -706,11 +720,12 @@ export function RiftRun({ runId, userId }: { runId: string; userId: string }) {
                     type="button"
                     onClick={() => act({ type: 'attack', target: monster.id })}
                   >
-                    <Entity kind="attacker" /> Attaquer {monsterName(monster, view.monsters)}
+                    <Entity kind="attacker" decorative /> Attaquer{' '}
+                    {monsterName(monster, view.monsters)}
                   </button>
                 ))}
                 <button type="button" onClick={() => act({ type: 'defend' })}>
-                  <Entity kind="tank" /> Se défendre
+                  <Entity kind="tank" decorative /> Se défendre
                 </button>
                 {standingHeroes.map((hero) => (
                   <button
@@ -718,7 +733,7 @@ export function RiftRun({ runId, userId }: { runId: string; userId: string }) {
                     type="button"
                     onClick={() => act({ type: 'heal', target: hero.id })}
                   >
-                    <Entity kind="healer" /> Soigner {hero.name}
+                    <Entity kind="healer" decorative /> Soigner {hero.name}
                   </button>
                 ))}
               </div>
@@ -838,7 +853,7 @@ function GuildRankingPanel({ guild }: { guild: GuildId }) {
   return (
     <section className="panel" aria-label="Classement des guildes">
       <h2>
-        <Entity kind="ranking" /> Classement des guildes
+        <Entity kind="ranking" decorative /> Classement des guildes
       </h2>
       <p className="muted">
         Étages franchis par la meilleure expédition de chaque guilde. Une expédition abandonnée

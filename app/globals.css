@@ -23,6 +23,14 @@
   --ok: #7fa36a;
   --warn: #d0644b;
 
+  /* Ombres et creux, textes posés sur une couleur de guilde, en-tête, ennemis. */
+  --shade: 0 0 0;
+  --on-guild: #f2e8d4;
+  --shell: #070605;
+  --foe: #d98b75;
+  --field: rgb(0 0 0 / 0.35);
+  --title-shadow: 0 2px 0 rgb(0 0 0 / 0.6);
+
   /* Couleur de la guilde du joueur : l'or, tant qu'aucune guilde n'est choisie. */
   --guild: #b08d57;
   --guild-bright: #d6b273;
@@ -58,6 +66,97 @@
   --guild-deep: #0b1624;
 }
 
+/*
+ * Mode clair : parchemin et encre brune, en suivant le réglage du système, ou le choix du
+ * joueur (attribut data-theme, posé par le bouton du cadre du jeu). Les couleurs vives des
+ * guildes y sont assombries, pour rester lisibles sur le parchemin.
+ */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark']) {
+    color-scheme: light;
+    --bg: #ece2cc;
+    --stone: #e2d5ba;
+    --panel: #f5eedd;
+    --panel-edge: #cbb892;
+    --iron: #b5a17c;
+    --ink: #2b2015;
+    --muted: #65553e;
+    --parchment: #22180e;
+    --gold: #6c4e16;
+    --gold-dim: #a8894b;
+    --ok: #2e5f28;
+    --warn: #a3361f;
+    --shade: 110 80 40;
+    --shell: #d9c9a7;
+    --foe: #9a3a24;
+    --field: #fbf6ea;
+    --title-shadow: none;
+    --guild: #8a6a35;
+    --guild-bright: #6e5222;
+    --guild-deep: #4a3714;
+  }
+  :root:not([data-theme='dark'])[data-guild='red'],
+  :root:not([data-theme='dark']) [data-guild='red'] {
+    --guild: #a3302a;
+    --guild-bright: #8f231c;
+    --guild-deep: #5c1410;
+  }
+  :root:not([data-theme='dark'])[data-guild='green'],
+  :root:not([data-theme='dark']) [data-guild='green'] {
+    --guild: #3d7349;
+    --guild-bright: #2c5e37;
+    --guild-deep: #16351e;
+  }
+  :root:not([data-theme='dark'])[data-guild='blue'],
+  :root:not([data-theme='dark']) [data-guild='blue'] {
+    --guild: #2f5c8f;
+    --guild-bright: #23497a;
+    --guild-deep: #122b4a;
+  }
+}
+:root[data-theme='light'] {
+  color-scheme: light;
+  --bg: #ece2cc;
+  --stone: #e2d5ba;
+  --panel: #f5eedd;
+  --panel-edge: #cbb892;
+  --iron: #b5a17c;
+  --ink: #2b2015;
+  --muted: #65553e;
+  --parchment: #22180e;
+  --gold: #6c4e16;
+  --gold-dim: #a8894b;
+  --ok: #2e5f28;
+  --warn: #a3361f;
+  --shade: 110 80 40;
+  --shell: #d9c9a7;
+  --foe: #9a3a24;
+  --field: #fbf6ea;
+  --title-shadow: none;
+  --guild: #8a6a35;
+  --guild-bright: #6e5222;
+  --guild-deep: #4a3714;
+}
+:root[data-theme='light'][data-guild='red'],
+:root[data-theme='light'] [data-guild='red'] {
+  --guild: #a3302a;
+  --guild-bright: #8f231c;
+  --guild-deep: #5c1410;
+}
+:root[data-theme='light'][data-guild='green'],
+:root[data-theme='light'] [data-guild='green'] {
+  --guild: #3d7349;
+  --guild-bright: #2c5e37;
+  --guild-deep: #16351e;
+}
+:root[data-theme='light'][data-guild='blue'],
+:root[data-theme='light'] [data-guild='blue'] {
+  --guild: #2f5c8f;
+  --guild-bright: #23497a;
+  --guild-deep: #122b4a;
+}
+
+
 * { box-sizing: border-box; }
 
 /*
@@ -68,7 +167,7 @@ html {
   min-height: 100%;
   background:
     radial-gradient(ellipse 80% 50% at 50% -10%, color-mix(in srgb, var(--guild) 28%, transparent), transparent 70%),
-    radial-gradient(ellipse 60% 40% at 50% 110%, rgb(0 0 0 / 0.6), transparent 70%),
+    radial-gradient(ellipse 60% 40% at 50% 110%, rgb(var(--shade) / 0.6), transparent 70%),
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.5 0 0 0 0 0.45 0 0 0 0 0.4 0 0 0 0.07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
     var(--bg);
   background-attachment: fixed;
@@ -86,7 +185,7 @@ h1, h2, h3 {
 h1 {
   margin: 8px 0 4px;
   font-size: 1.7rem;
-  text-shadow: 0 2px 0 rgb(0 0 0 / 0.6);
+  text-shadow: var(--title-shadow);
 }
 h2 { margin: 0 0 8px; font-size: 1.1rem; }
 h3 { margin: 16px 0 8px; font-size: 0.95rem; color: var(--muted); }
@@ -109,9 +208,9 @@ a { color: var(--accent); }
   border: 1px solid var(--panel-edge);
   border-radius: var(--radius);
   box-shadow:
-    inset 0 0 0 1px rgb(0 0 0 / 0.5),
+    inset 0 0 0 1px rgb(var(--shade) / 0.5),
     inset 0 0 0 4px color-mix(in srgb, var(--gold-dim) 18%, transparent),
-    0 12px 28px rgb(0 0 0 / 0.45);
+    0 12px 28px rgb(var(--shade) / 0.45);
 }
 .panel::before,
 .panel::after {
@@ -140,9 +239,9 @@ a.button {
   padding: 9px 16px;
   border: 1px solid var(--guild);
   border-radius: var(--radius);
-  color: var(--parchment);
+  color: var(--on-guild);
   background: linear-gradient(180deg, color-mix(in srgb, var(--guild) 55%, #000) 0%, var(--guild-deep) 100%);
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08), 0 2px 6px rgb(0 0 0 / 0.5);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08), 0 2px 6px rgb(var(--shade) / 0.5);
   cursor: pointer;
   transition: filter 0.15s, transform 0.15s, box-shadow 0.15s;
 }
@@ -154,6 +253,7 @@ a.button:hover {
 button:active:not(:disabled) { transform: translateY(1px); }
 button:disabled { opacity: 0.4; cursor: not-allowed; }
 button:focus-visible,
+summary:focus-visible,
 a:focus-visible,
 input:focus-visible,
 select:focus-visible {
@@ -186,35 +286,19 @@ select {
   padding: 8px 12px;
   border-radius: var(--radius);
   border: 1px solid var(--iron);
-  background: rgb(0 0 0 / 0.35);
+  background: var(--field);
   color: var(--ink);
-  box-shadow: inset 0 1px 3px rgb(0 0 0 / 0.6);
+  box-shadow: inset 0 1px 3px rgb(var(--shade) / 0.6);
 }
 input::placeholder { color: color-mix(in srgb, var(--muted) 70%, transparent); }
 label { font-family: var(--font-display), serif; font-size: 0.8rem; letter-spacing: 0.06em; color: var(--muted); }
 
-/* Écran du Village. */
-.stock { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-.stock div { font-size: 1.35rem; font-variant-numeric: tabular-nums; color: var(--parchment); }
-.stock small { display: block; font-size: 0.8rem; color: var(--muted); }
-.buildings { display: grid; gap: 12px; }
-.building {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-  padding-bottom: 10px;
-  border-bottom: 1px solid color-mix(in srgb, var(--iron) 60%, transparent);
-}
-.building:last-of-type { border-bottom: 0; }
-
 /* Cadre du jeu : en-tête de fer, souligné de la couleur de la guilde, puis la navigation. */
 .shell {
   margin: -24px -16px 20px;
-  background: linear-gradient(180deg, #070605, var(--stone));
+  background: linear-gradient(180deg, var(--shell), var(--stone));
   border-bottom: 2px solid var(--guild);
-  box-shadow: 0 8px 22px rgb(0 0 0 / 0.55);
+  box-shadow: 0 8px 22px rgb(var(--shade) / 0.55);
   overflow: hidden;
 }
 .shell-top {
@@ -295,7 +379,7 @@ label { font-family: var(--font-display), serif; font-size: 0.8rem; letter-spaci
 .status[data-status='open'] { color: var(--ok); }
 .status[data-status='reconnecting'] { color: var(--warn); }
 
-/* Écrans du Donjon et de la Faille. */
+/* Listes des expéditions et chroniques. */
 .games, .log { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
 .games li {
   display: flex;
@@ -305,18 +389,6 @@ label { font-family: var(--font-display), serif; font-size: 0.8rem; letter-spaci
   border-bottom: 1px solid color-mix(in srgb, var(--iron) 50%, transparent);
 }
 .log li { color: var(--muted); font-style: italic; }
-.heroes, .monsters { display: grid; gap: 8px; }
-.fighter {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  flex-wrap: wrap;
-  padding: 6px 10px;
-  border-left: 2px solid var(--guild);
-  background: rgb(0 0 0 / 0.2);
-}
-.monsters .fighter { border-left-color: var(--warn); }
-.fighter[data-down='true'] { opacity: 0.4; text-decoration: line-through; filter: grayscale(1); }
 .ok { font-size: 0.85rem; color: var(--ok); font-style: italic; }
 .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
 .countdown {
@@ -341,10 +413,6 @@ label { font-family: var(--font-display), serif; font-size: 0.8rem; letter-spaci
 .ranking tbody tr { border-top: 1px solid color-mix(in srgb, var(--iron) 60%, transparent); }
 .ranking tr[aria-current='true'] { color: var(--parchment); background: color-mix(in srgb, var(--guild) 22%, transparent); }
 
-/* Marché. */
-.offers { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
-.offers li { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-input.amount { width: 5em; }
 
 /* Taverne et chats de guilde. */
 .tavern { display: grid; grid-template-columns: 1fr 220px; gap: 16px; align-items: start; }
@@ -406,7 +474,7 @@ input.amount { width: 5em; }
   border-top: 6px solid var(--gold-dim);
   /* Étendard à deux pointes, coupé dans la partie basse. */
   clip-path: polygon(0 0, 100% 0, 100% 86%, 50% 100%, 0 86%);
-  box-shadow: inset 0 0 40px rgb(0 0 0 / 0.55);
+  box-shadow: inset 0 0 40px rgb(var(--shade) / 0.55);
 }
 .banner-name {
   margin-top: 6px;
@@ -414,7 +482,7 @@ input.amount { width: 5em; }
   font-weight: 700;
   font-size: 1.15rem;
   letter-spacing: 0.06em;
-  color: var(--parchment);
+  color: var(--on-guild);
 }
 .banner-emblem {
   width: 108px;
@@ -422,14 +490,14 @@ input.amount { width: 5em; }
   display: grid;
   place-items: center;
   border-radius: 50%;
-  background: radial-gradient(circle, rgb(0 0 0 / 0.15), rgb(0 0 0 / 0.55));
+  background: radial-gradient(circle, rgb(var(--shade) / 0.15), rgb(var(--shade) / 0.55));
   border: 2px solid var(--gold-dim);
   font-size: 3.6rem;
 }
 .banner-emblem .entity-icon,
-.oath-emblem .entity-icon { color: var(--parchment) !important; filter: drop-shadow(0 3px 4px rgb(0 0 0 / 0.6)); }
-.banner-motto { margin: 0; font-style: italic; font-size: 1.05rem; color: var(--parchment); }
-.banner-portrait { margin: 0; font-size: 0.95rem; line-height: 1.45; color: color-mix(in srgb, var(--parchment) 70%, transparent); }
+.oath-emblem .entity-icon { color: var(--on-guild) !important; filter: drop-shadow(0 3px 4px rgb(var(--shade) / 0.6)); }
+.banner-motto { margin: 0; font-style: italic; font-size: 1.05rem; color: var(--on-guild); }
+.banner-portrait { margin: 0; font-size: 0.95rem; line-height: 1.45; color: color-mix(in srgb, var(--on-guild) 75%, transparent); }
 .banner:hover .banner-cloth { filter: brightness(1.12); }
 
 .oath {
@@ -453,10 +521,10 @@ input.amount { width: 5em; }
   font-size: 1rem;
   letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: var(--parchment);
+  color: var(--on-guild);
 }
 .oath-text strong { font-size: 2.2rem; letter-spacing: 0.08em; }
-.oath-motto { margin: 0; font-size: 1.3rem; font-style: italic; color: var(--parchment); }
+.oath-motto { margin: 0; font-size: 1.3rem; font-style: italic; color: var(--on-guild); }
 
 /* En-tête des pages : un sur-titre, le titre, et l'état du temps réel. */
 .page-header { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
@@ -483,7 +551,7 @@ input.amount { width: 5em; }
     radial-gradient(ellipse at 80% 90%, rgb(120 80 30 / 0.25), transparent 55%),
     linear-gradient(180deg, #eadbb7, #d8c393);
   border-radius: 2px;
-  box-shadow: 0 0 0 1px #b39a68, 0 24px 50px rgb(0 0 0 / 0.6), inset 0 0 60px rgb(120 80 30 / 0.35);
+  box-shadow: 0 0 0 1px #b39a68, 0 24px 50px rgb(var(--shade) / 0.6), inset 0 0 60px rgb(120 80 30 / 0.35);
 }
 .charter h1 { color: #2a1d10; text-shadow: none; font-size: 1.7rem; }
 .charter .charter-kicker { color: #8a5a2b; }
@@ -501,7 +569,7 @@ input.amount { width: 5em; }
   box-shadow: none;
   padding: 6px 2px;
 }
-.charter input::placeholder { color: #9c8460; }
+.charter input::placeholder { color: #6f5838; }
 .charter .error { color: #8f2a1e; }
 .seal-button { justify-self: start; }
 .charter-seal {
@@ -515,7 +583,7 @@ input.amount { width: 5em; }
   border-radius: 50%;
   font-size: 3rem;
   background: radial-gradient(circle at 35% 30%, var(--guild-bright), var(--guild) 55%, var(--guild-deep));
-  box-shadow: 0 4px 10px rgb(0 0 0 / 0.45), inset 0 -4px 8px rgb(0 0 0 / 0.35);
+  box-shadow: 0 4px 10px rgb(var(--shade) / 0.45), inset 0 -4px 8px rgb(var(--shade) / 0.35);
 }
 .charter-seal .entity-icon { color: rgb(255 240 220 / 0.85) !important; }
 
@@ -530,7 +598,7 @@ input.amount { width: 5em; }
   background: linear-gradient(180deg, var(--panel), var(--stone));
   border: 1px solid var(--panel-edge);
   border-top: 3px solid var(--gold-dim);
-  box-shadow: 0 10px 22px rgb(0 0 0 / 0.4);
+  box-shadow: 0 10px 22px rgb(var(--shade) / 0.4);
 }
 .coffer > .entity:first-child { font-size: 2rem; }
 .coffer strong { font-family: var(--font-display), serif; font-size: 1.7rem; color: var(--parchment); font-variant-numeric: tabular-nums; }
@@ -549,7 +617,7 @@ input.amount { width: 5em; }
   text-align: center;
   background: linear-gradient(180deg, color-mix(in srgb, var(--panel) 90%, var(--guild)), var(--stone));
   border: 1px solid var(--panel-edge);
-  box-shadow: 0 12px 26px rgb(0 0 0 / 0.45);
+  box-shadow: 0 12px 26px rgb(var(--shade) / 0.45);
 }
 .workshop[data-built='false'] { filter: saturate(0.4); }
 .workshop h3 { margin: 0; color: var(--parchment); font-size: 1rem; }
@@ -563,7 +631,7 @@ input.amount { width: 5em; }
   border-radius: 50%;
   font-size: 2.4rem;
   border: 2px solid var(--gold-dim);
-  background: radial-gradient(circle, color-mix(in srgb, var(--guild) 40%, transparent), rgb(0 0 0 / 0.5));
+  background: radial-gradient(circle, color-mix(in srgb, var(--guild) 40%, transparent), rgb(var(--shade) / 0.5));
 }
 .level-pips { display: flex; gap: 3px; }
 .level-pips span { width: 12px; height: 6px; background: var(--iron); transform: skewX(-20deg); }
@@ -585,9 +653,9 @@ input.amount { width: 5em; }
   background: linear-gradient(180deg, var(--guild), var(--guild-deep));
   border-top: 4px solid var(--gold-dim);
   clip-path: polygon(0 0, 100% 0, 100% 80%, 50% 100%, 0 80%);
-  box-shadow: inset 0 0 24px rgb(0 0 0 / 0.5);
+  box-shadow: inset 0 0 24px rgb(var(--shade) / 0.5);
 }
-.house-emblem .entity-icon { color: var(--parchment) !important; padding-bottom: 12px; }
+.house-emblem .entity-icon { color: var(--on-guild) !important; padding-bottom: 12px; }
 .house-motto { margin: 0; font-style: italic; color: var(--parchment); }
 .notice {
   margin: 14px 0 0;
@@ -625,17 +693,53 @@ input.amount { width: 5em; }
   flex-wrap: wrap;
   margin: 14px 0 6px;
   padding: 12px;
-  background: rgb(0 0 0 / 0.3);
+  background: rgb(var(--shade) / 0.3);
   border: 1px solid var(--iron);
 }
-.rift-cta select { flex: 1; min-width: 200px; }
+/* Choix du rôle dans la Faille : trois cartes, la carte choisie aux couleurs de la guilde. */
+.roles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; width: 100%; margin: 0; padding: 0; border: 0; min-width: 0; }
+@media (max-width: 560px) { .roles { grid-template-columns: 1fr; } }
+button.role {
+  color: var(--ink);
+  display: grid;
+  align-content: start;
+  justify-items: center;
+  gap: 4px;
+  padding: 14px 10px;
+  text-align: center;
+  text-transform: none;
+  letter-spacing: normal;
+  font-family: var(--font-body), serif;
+  font-size: 0.95rem;
+  font-weight: 400;
+  background: linear-gradient(180deg, var(--panel), var(--stone));
+  border: 1px solid var(--panel-edge);
+}
+button.role[aria-pressed='true'] {
+  border-color: var(--guild-bright);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--guild) 45%, var(--panel)), var(--stone));
+  box-shadow: 0 0 14px color-mix(in srgb, var(--guild-bright) 30%, transparent);
+}
+.role-icon {
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-size: 1.8rem;
+  border: 2px solid var(--gold-dim);
+  background: rgb(var(--shade) / 0.4);
+}
+.role-name { font-family: var(--font-display), serif; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--parchment); }
+.role-stats { font-size: 0.85rem; color: var(--gold); }
+.role-hint { color: var(--muted); line-height: 1.35; }
 .rift-days { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
 .rift-days li {
   display: grid;
   padding: 8px 10px;
   font-style: italic;
   color: var(--parchment);
-  background: rgb(0 0 0 / 0.25);
+  background: rgb(var(--shade) / 0.25);
   border-left: 2px solid var(--gold-dim);
 }
 .rift-days li span {
@@ -685,7 +789,7 @@ input.amount { width: 5em; }
   gap: 4px;
   padding: 12px;
   text-align: center;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--guild) 30%, transparent), rgb(0 0 0 / 0.3));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--guild) 30%, transparent), rgb(var(--shade) / 0.3));
   border: 1px solid var(--panel-edge);
 }
 .seat > .entity { font-size: 2.2rem; }
@@ -721,7 +825,7 @@ input.amount { width: 5em; }
   background: linear-gradient(90deg, color-mix(in srgb, var(--guild) 26%, var(--panel)), var(--stone));
   border: 1px solid var(--panel-edge);
   border-left: 3px solid var(--guild-bright);
-  box-shadow: 0 8px 18px rgb(0 0 0 / 0.4);
+  box-shadow: 0 8px 18px rgb(var(--shade) / 0.4);
 }
 .fighter-card[data-foe='true'] { flex-direction: row-reverse; text-align: right; background: linear-gradient(270deg, rgb(110 30 20 / 0.35), var(--stone)); border-left: 1px solid var(--panel-edge); border-right: 3px solid var(--warn); }
 .fighter-card[data-mine] { outline: 1px solid var(--guild-bright); }
@@ -735,27 +839,28 @@ input.amount { width: 5em; }
   font-size: 1.8rem;
   border-radius: 50%;
   border: 2px solid var(--gold-dim);
-  background: rgb(0 0 0 / 0.45);
+  background: rgb(var(--shade) / 0.45);
 }
-.fighter-card[data-foe='true'] .fighter-portrait .entity-icon { color: #d98b75; }
+.fighter-card[data-foe='true'] .fighter-portrait .entity-icon { color: var(--foe); }
 .fighter-body { flex: 1; display: grid; gap: 2px; min-width: 0; }
 .fighter-head { display: flex; gap: 8px; align-items: baseline; justify-content: space-between; }
 .fighter-card[data-foe='true'] .fighter-head { flex-direction: row-reverse; }
 .fighter-head strong { color: var(--parchment); }
-.hp { position: relative; height: 14px; margin-top: 4px; background: rgb(0 0 0 / 0.6); border: 1px solid var(--iron); overflow: hidden; }
+.hp { position: relative; height: 14px; margin-top: 4px; background: rgb(var(--shade) / 0.6); border: 1px solid var(--iron); overflow: hidden; }
 .hp span { position: absolute; inset: 0 auto 0 0; background: linear-gradient(180deg, #7fbf6a, #3f7d3a); }
 .fighter-card[data-foe='true'] .hp span { inset: 0 0 0 auto; background: linear-gradient(180deg, #e2735c, #8f2a1e); }
 .hp em { position: relative; display: block; font-size: 0.7rem; font-style: normal; line-height: 12px; text-align: center; color: var(--parchment); text-shadow: 0 1px 2px #000; }
 
 .run-end { display: grid; justify-items: center; gap: 6px; text-align: center; }
 .run-end strong { font-family: var(--font-display), serif; font-size: 4rem; line-height: 1; color: var(--parchment); }
-.chronicle .log li[data-kind='damage'] { color: #d98b75; }
+.chronicle .log li[data-kind='damage'] { color: var(--foe); }
 .chronicle .log li[data-kind='heal'] { color: var(--ok); }
 
 /* Donjon : le choix du niveau, le couloir des salles et la salle courante. */
 .difficulties { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin: 16px 0 14px; }
 @media (max-width: 560px) { .difficulties { grid-template-columns: 1fr; } }
 button.difficulty {
+  color: var(--ink);
   display: grid;
   gap: 4px;
   justify-items: start;
@@ -780,7 +885,7 @@ button.difficulty[aria-pressed='true'] { border-color: var(--guild-bright); back
   display: grid;
   place-items: center;
   font-size: 1.4rem;
-  background: rgb(0 0 0 / 0.4);
+  background: rgb(var(--shade) / 0.4);
   border: 1px solid var(--iron);
   border-radius: 20px 20px 2px 2px;
 }
@@ -800,13 +905,13 @@ button.difficulty[aria-pressed='true'] { border-color: var(--guild-bright); back
   margin: 0;
   padding: 12px;
   border: 1px solid var(--iron);
-  background: rgb(0 0 0 / 0.25);
+  background: rgb(var(--shade) / 0.25);
 }
 .bargain-side legend { font-family: var(--font-display), serif; font-size: 0.75rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); padding: 0 6px; }
 .bargain-side .amount { width: 7em; text-align: center; font-size: 1.3rem; }
 .bargain-arrow { font-size: 2rem; color: var(--gold); }
 .resource-choice { display: flex; gap: 6px; }
-.resource-choice button { padding: 8px 10px; font-size: 1.3rem; background: rgb(0 0 0 / 0.4); border-color: var(--iron); }
+.resource-choice button { padding: 8px 10px; font-size: 1.3rem; background: rgb(var(--shade) / 0.4); border-color: var(--iron); }
 .resource-choice button[aria-pressed='true'] { border-color: var(--guild-bright); background: color-mix(in srgb, var(--guild) 45%, transparent); }
 
 .stalls { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; margin-top: 12px; }
@@ -819,7 +924,7 @@ button.difficulty[aria-pressed='true'] { border-color: var(--guild-bright); back
   text-align: center;
   background: linear-gradient(180deg, var(--panel), var(--stone));
   border: 1px solid var(--panel-edge);
-  box-shadow: 0 10px 22px rgb(0 0 0 / 0.4);
+  box-shadow: 0 10px 22px rgb(var(--shade) / 0.4);
 }
 /* Auvent rayé de l'étal, aux couleurs de la guilde du joueur. */
 .stall::before {
@@ -827,7 +932,7 @@ button.difficulty[aria-pressed='true'] { border-color: var(--guild-bright); back
   position: absolute;
   inset: 0 0 auto;
   height: 12px;
-  background: repeating-linear-gradient(90deg, var(--guild) 0 18px, var(--parchment) 18px 36px);
+  background: repeating-linear-gradient(90deg, var(--guild) 0 18px, var(--on-guild) 18px 36px);
   opacity: 0.8;
 }
 .stall[data-mine='true']::before { background: repeating-linear-gradient(90deg, var(--gold-dim) 0 18px, var(--stone) 18px 36px); }
@@ -850,10 +955,10 @@ button.difficulty[aria-pressed='true'] { border-color: var(--guild-bright); back
   place-items: center;
   border-radius: 50%;
   font-size: 1.2rem;
-  background: color-mix(in srgb, var(--guild) 40%, rgb(0 0 0 / 0.5));
+  background: color-mix(in srgb, var(--guild) 40%, rgb(var(--shade) / 0.5));
   border: 1px solid var(--iron);
 }
-.message:not([data-guild]) .message-sigil { background: rgb(0 0 0 / 0.4); }
+.message:not([data-guild]) .message-sigil { background: rgb(var(--shade) / 0.4); }
 .message-head { display: flex; gap: 8px; align-items: baseline; }
 .message-head strong { color: var(--guild-bright); }
 .message:not([data-guild]) .message-head strong { color: var(--parchment); }
@@ -913,4 +1018,8 @@ button.difficulty[aria-pressed='true'] { border-color: var(--guild-bright); back
 .gate-panel h2 { text-align: center; }
 .gate-panel form { max-width: none; }
 .gate > p:last-child { margin-top: 18px; font-size: 0.85rem; }
-.panel.danger button { border-color: var(--warn); background: linear-gradient(180deg, #6b1f15, #2a0b07); }
+.panel.danger button { border-color: var(--warn); background: linear-gradient(180deg, #6b1f15, #2a0b07); color: var(--on-guild); }
+
+/* Bouton de l'apparence. */
+.theme-toggle { font-size: 1.35rem; }
+.gate-theme { display: flex; justify-content: flex-end; color: var(--muted); }

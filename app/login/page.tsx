@@ -4,6 +4,7 @@ import { type FormEvent, useState } from 'react'
 import { HealthStatus } from '@/modules/system/ui'
 import { authClient } from '@/platform/auth/client'
 import { Entity } from '@/ui/entity'
+import { ThemeToggle } from '@/ui/theme-toggle'
 
 /**
  * Messages affichés pour les erreurs renvoyées par Better Auth.
@@ -52,6 +53,9 @@ export default function LoginPage() {
 
   return (
     <div className="gate">
+      <div className="gate-theme">
+        <ThemeToggle />
+      </div>
       <div className="gate-sigils" aria-hidden="true">
         <Entity kind="guild-red" />
         <Entity kind="guild-green" />

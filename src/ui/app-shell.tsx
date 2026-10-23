@@ -7,6 +7,7 @@ import { GiCrown, GiExitDoor, GiScrollUnfurled } from 'react-icons/gi'
 import { authClient } from '@/platform/auth/client'
 import { Entity } from './entity'
 import { look } from './theme'
+import { ThemeToggle } from './theme-toggle'
 
 /** Liens de navigation : chaque module ajouté au jeu y reçoit une entrée. */
 export const NAV = [
@@ -78,6 +79,7 @@ export function AppShell({
             </span>
           </div>
           <div className="shell-actions">
+            <ThemeToggle />
             <Link
               href="/account"
               title="Mes données"
@@ -101,7 +103,7 @@ export function AppShell({
                 href={item.href}
                 aria-current={pathname.startsWith(item.href) ? 'page' : undefined}
               >
-                <Entity kind={item.kind} /> {item.label}
+                <Entity kind={item.kind} decorative /> {item.label}
               </Link>
             ))}
           </nav>

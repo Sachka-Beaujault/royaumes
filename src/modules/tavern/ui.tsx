@@ -133,7 +133,7 @@ export function TavernScreen({ userId }: { userId: string }) {
         <div>
           <p className="page-kicker">Au coin du feu</p>
           <h1>
-            <Entity kind="tavern" /> Taverne
+            <Entity kind="tavern" decorative /> Taverne
           </h1>
         </div>
         <span className="status" data-status={status}>
