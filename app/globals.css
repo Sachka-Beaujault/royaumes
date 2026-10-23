@@ -872,3 +872,45 @@ button.difficulty[aria-pressed='true'] { border-color: var(--guild-bright); back
 }
 .hearth .presence li { display: flex; align-items: center; gap: 8px; color: var(--parchment); }
 .presence-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 6px var(--ok); }
+
+/* Classement : le podium des trois premiers. */
+.podium { display: grid; grid-template-columns: 1fr 1.15fr 1fr; gap: 12px; align-items: end; margin-top: 20px; }
+.podium-step {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  padding: 18px 10px;
+  text-align: center;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--guild) 25%, var(--panel)), var(--stone));
+  border: 1px solid var(--panel-edge);
+  border-top: 3px solid var(--iron);
+}
+.podium-step[data-rank='1'] { order: 2; min-height: 190px; border-top-color: var(--gold); }
+.podium-step[data-rank='2'] { order: 1; min-height: 160px; border-top-color: #b8c2cc; }
+.podium-step[data-rank='3'] { order: 3; min-height: 140px; border-top-color: #b07a4a; }
+.podium-step[data-mine] { outline: 1px solid var(--guild-bright); }
+.podium-step strong { color: var(--parchment); font-family: var(--font-display), serif; }
+.podium-rank { font-family: var(--font-display), serif; font-size: 2.2rem; color: var(--gold); line-height: 1; }
+.podium-step[data-rank='2'] .podium-rank { color: #b8c2cc; }
+.podium-step[data-rank='3'] .podium-rank { color: #b07a4a; }
+@media (max-width: 560px) {
+  .podium { grid-template-columns: 1fr; }
+  .podium-step { order: 0 !important; min-height: 0 !important; }
+  .ranking { font-size: 0.85rem; }
+}
+.panel:has(> .ranking) { overflow-x: auto; }
+
+/* Mes données : la suppression du compte, mise à part. */
+.panel.danger { border-color: color-mix(in srgb, var(--warn) 50%, var(--panel-edge)); }
+.panel.danger h2 { color: var(--warn); }
+
+/* Connexion : les portes du royaume. */
+.gate { max-width: 460px; margin: 6vh auto 0; text-align: center; }
+.gate-sigils { display: flex; justify-content: center; gap: 22px; font-size: 2.4rem; }
+.gate-title { font-size: 3.2rem; letter-spacing: 0.18em; text-transform: uppercase; margin: 4px 0; }
+.gate-tagline { max-width: 380px; margin: 0 auto; }
+.gate-panel { text-align: left; margin-top: 22px; }
+.gate-panel h2 { text-align: center; }
+.gate-panel form { max-width: none; }
+.gate > p:last-child { margin-top: 18px; font-size: 0.85rem; }
+.panel.danger button { border-color: var(--warn); background: linear-gradient(180deg, #6b1f15, #2a0b07); }

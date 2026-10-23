@@ -1,5 +1,6 @@
 'use client'
 import { hc } from 'hono/client'
+import { motion } from 'motion/react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { type ChannelEvent, useChannel } from '@/platform/realtime/use-channel'
 import { Entity } from '@/ui/entity'
@@ -69,23 +70,54 @@ export function RankingScreen({ userId }: { userId: string }) {
   const status = useChannel(RANKING_CHANNEL, follow)
   const entries = ranking?.entries
 
+  const podium = entries?.slice(0, 3) ?? []
+
   return (
     <>
-      <div className="row" style={{ justifyContent: 'space-between' }}>
-        <h1>
-          <Entity kind="ranking" /> Classement
-        </h1>
+      <header className="page-header">
+        <div>
+          <p className="page-kicker">Les grands noms du royaume</p>
+          <h1>
+            <Entity kind="ranking" /> Classement
+          </h1>
+        </div>
         <span className="status" data-status={status}>
           {STATUS_LABELS[status]}
         </span>
-      </div>
-      <section className="panel" aria-label="Classement des joueurs">
-        {entries?.length === 0 && <p className="muted">Aucun joueur classé pour le moment.</p>}
-        {entries && entries.length > 0 && (
+      </header>
+
+      {entries?.length === 0 && <p className="muted">Aucun joueur classé pour le moment.</p>}
+
+      {/* Podium des trois premiers : le premier au centre, plus haut que les deux autres. */}
+      {podium.length > 0 && (
+        <section className="podium" aria-label="Podium">
+          {podium.map((entry, index) => (
+            <motion.div
+              key={entry.playerId}
+              className="podium-step"
+              data-rank={entry.rank}
+              data-mine={entry.playerId === userId || undefined}
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 + index * 0.12, duration: 0.5 }}
+            >
+              <span className="podium-rank">{entry.rank}</span>
+              <strong>{entry.label}</strong>
+              <span className="muted">
+                {entry.gamesWon} victoire{entry.gamesWon > 1 ? 's' : ''} · <Entity kind="gold" />{' '}
+                {entry.gold}
+              </span>
+            </motion.div>
+          ))}
+        </section>
+      )}
+
+      {entries && entries.length > 0 && (
+        <section className="panel" aria-label="Classement des joueurs">
           <table className="ranking">
             <thead>
               <tr>
-                <th>Rang</th>
+                <th aria-label="Rang">#</th>
                 <th>Joueur</th>
                 <th>Victoires</th>
                 <th>Expéditions</th>
@@ -113,8 +145,8 @@ export function RankingScreen({ userId }: { userId: string }) {
               ))}
             </tbody>
           </table>
-        )}
-      </section>
+        </section>
+      )}
     </>
   )
 }

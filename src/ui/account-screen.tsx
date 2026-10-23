@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import { Entity } from './entity'
 
 /** Phrase que le joueur doit saisir pour confirmer la suppression de son compte. */
 const CONFIRMATION = 'SUPPRIMER'
@@ -33,25 +34,32 @@ export function AccountScreen() {
 
   return (
     <>
-      <h1>Mes données</h1>
+      <header className="page-header">
+        <div>
+          <p className="page-kicker">Votre registre</p>
+          <h1>
+            <Entity kind="quill" /> Mes données
+          </h1>
+        </div>
+      </header>
 
       <section className="panel" aria-label="Exporter mes données">
         <h2>Exporter mes données</h2>
         <p>
           Téléchargez, au format JSON, l'ensemble des données que le jeu conserve à votre sujet :
-          compte, village, expéditions, offres, messages et classement.
+          compte, village, guilde, expéditions, offres, messages et classement.
         </p>
         <a className="button" href={exportUrl} download>
           Télécharger mes données
         </a>
       </section>
 
-      <section className="panel" aria-label="Supprimer mon compte">
+      <section className="panel danger" aria-label="Supprimer mon compte">
         <h2>Supprimer mon compte</h2>
         <p>
-          Votre compte, vos messages et votre présence dans la Taverne sont supprimés. Votre nom et
-          celui de votre village sont remplacés partout ailleurs par une mention neutre. Cette
-          opération est irréversible.
+          Votre compte, vos messages dans la Taverne et dans les chats de guilde, et votre présence
+          dans la Taverne sont supprimés. Votre nom et celui de votre village sont remplacés partout
+          ailleurs par une mention neutre. Cette opération est irréversible.
         </p>
         <div className="row">
           <label htmlFor="confirmation">Saisissez {CONFIRMATION} pour confirmer</label>

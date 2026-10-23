@@ -51,12 +51,19 @@ export default function LoginPage() {
   }
 
   return (
-    <>
-      <h1>
-        <Entity kind="village" /> Royaumes
-      </h1>
-      <p className="muted">{mode === 'signIn' ? 'Connexion' : 'Création de compte'}</p>
-      <div className="panel">
+    <div className="gate">
+      <div className="gate-sigils" aria-hidden="true">
+        <Entity kind="guild-red" />
+        <Entity kind="guild-green" />
+        <Entity kind="guild-blue" />
+      </div>
+      <p className="page-kicker">Trois maisons, une Faille</p>
+      <h1 className="gate-title">Royaumes</h1>
+      <p className="muted gate-tagline">
+        Bâtissez votre village, prêtez allégeance à une maison, et descendez dans la Faille.
+      </p>
+      <div className="panel gate-panel">
+        <h2>{mode === 'signIn' ? 'Franchir les portes' : 'Entrer au registre du royaume'}</h2>
         <form onSubmit={submit}>
           {mode === 'signUp' && (
             <input name="name" placeholder="Pseudo" required minLength={2} maxLength={30} />
@@ -95,6 +102,6 @@ export default function LoginPage() {
         </p>
       </div>
       <HealthStatus />
-    </>
+    </div>
   )
 }
