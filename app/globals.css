@@ -1085,3 +1085,14 @@ button.difficulty[aria-pressed='true'] { border-color: var(--guild-bright); back
   text-transform: uppercase;
   color: var(--parchment);
 }
+
+/* Effets de la cérémonie, propres à chaque guilde, dessinés sous le blason. */
+.oath > :not(.oath-effect) { position: relative; z-index: 1; }
+.oath-effect { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+.oath-effect path,
+.oath-effect circle { fill: none; stroke-linecap: round; }
+/* Les épaisseurs sont exprimées dans les unités du dessin, qui couvre tout l'écran. */
+.claw { stroke: #ff5a3c; stroke-width: 3.4; filter: drop-shadow(0 0 10px #ff3b1f); }
+.claw-core { stroke: #ffe2c4; stroke-width: 0.9; }
+.swirl { stroke: #b9dcff; filter: drop-shadow(0 0 4px #6fb4ff); }
+.root { stroke: #9a7442; filter: drop-shadow(0 0 4px rgb(120 200 90 / 0.45)); }

@@ -894,7 +894,130 @@ function GuildRankingPanel({ guild }: { guild: GuildId }) {
 // ---------------------------------------------------------------------------
 
 /** Durée minimale de la cérémonie, en millisecondes, avant l'arrivée au village. */
-const OATH_MS = 2800
+const OATH_MS = 3400
+
+/** Durée de l'effet propre à chaque guilde, en secondes, avant l'apparition du blason. */
+const EFFECT_S = 1.1
+
+/** Griffures du dragon : trois entailles en diagonale, tracées l'une après l'autre. */
+const CLAWS = ['M 22 4 Q 40 46 66 96', 'M 36 2 Q 54 44 80 94', 'M 50 0 Q 68 42 94 90']
+
+/** Racines du chêne : elles poussent du bas de l'écran, et se ramifient en montant. */
+const ROOTS = [
+  'M 50 102 C 48 88 54 78 50 64 C 47 54 52 46 50 38',
+  'M 50 102 C 40 92 30 90 22 80 C 16 72 10 70 2 66',
+  'M 50 102 C 60 92 70 90 78 80 C 84 72 90 70 98 66',
+  'M 50 80 C 44 74 38 72 34 62',
+  'M 50 76 C 57 70 62 66 66 56',
+  'M 22 80 C 24 70 20 62 24 52',
+  'M 78 80 C 76 70 80 62 76 52',
+  'M 2 102 C 8 94 10 86 8 76',
+  'M 98 102 C 92 94 90 86 92 76',
+]
+
+/** Ouragan de l'Onde : des anneaux d'écume, tournant à des vitesses différentes. */
+const SWIRLS = [
+  { r: 12, dash: '30 70', turns: 900, width: 1.6 },
+  { r: 20, dash: '45 55', turns: -720, width: 1.2 },
+  { r: 28, dash: '25 75', turns: 640, width: 1.8 },
+  { r: 36, dash: '55 45', turns: -540, width: 1 },
+  { r: 44, dash: '20 80', turns: 460, width: 1.4 },
+]
+
+/**
+ * Effet propre à chaque guilde, joué avant l'apparition de son blason : les griffures du
+ * dragon, l'ouragan de l'onde ou les racines du chêne. Il est dessiné en SVG, et animé par
+ * motion, qui le réduit à un fondu pour les joueurs qui demandent moins d'animations.
+ */
+function OathEffect({ guild }: { guild: GuildId }) {
+  if (guild === 'red') {
+    return (
+      <motion.svg
+        className="oath-effect"
+        viewBox="0 0 100 100"
+        preserveAspectRatio="none"
+        aria-hidden="true"
+        // L'écran tremble sous chaque coup de griffe.
+        animate={{ x: [0, -14, 10, -8, 6, 0] }}
+        transition={{ duration: 0.6, delay: 0.25 }}
+      >
+        {CLAWS.map((d, index) => (
+          <g key={d}>
+            <motion.path
+              d={d}
+              className="claw"
+              initial={{ pathLength: 0, opacity: 0 }}
+              animate={{ pathLength: 1, opacity: [0, 1, 1, 0.55] }}
+              transition={{ delay: 0.2 + index * 0.12, duration: 0.32, ease: 'easeIn' }}
+            />
+            <motion.path
+              d={d}
+              className="claw-core"
+              initial={{ pathLength: 0 }}
+              animate={{ pathLength: 1 }}
+              transition={{ delay: 0.2 + index * 0.12, duration: 0.32, ease: 'easeIn' }}
+            />
+          </g>
+        ))}
+      </motion.svg>
+    )
+  }
+  if (guild === 'blue') {
+    return (
+      <motion.svg
+        className="oath-effect"
+        viewBox="0 0 100 100"
+        aria-hidden="true"
+        initial={{ scale: 0.2, opacity: 0 }}
+        animate={{ scale: [0.2, 1.1, 1.6], opacity: [0, 1, 0.5] }}
+        transition={{ duration: EFFECT_S + 0.9, times: [0, 0.55, 1], ease: 'easeOut' }}
+      >
+        {SWIRLS.map((swirl) => (
+          <motion.circle
+            key={swirl.r}
+            cx="50"
+            cy="50"
+            r={swirl.r}
+            pathLength={100}
+            strokeDasharray={swirl.dash}
+            strokeWidth={swirl.width}
+            className="swirl"
+            style={{ transformOrigin: '50px 50px' }}
+            animate={{ rotate: swirl.turns }}
+            transition={{ duration: EFFECT_S + 0.9, ease: 'easeOut' }}
+          />
+        ))}
+      </motion.svg>
+    )
+  }
+  // Les racines s'estompent une fois sorties de terre, pour laisser lire le serment.
+  return (
+    <motion.svg
+      className="oath-effect"
+      viewBox="0 0 100 100"
+      preserveAspectRatio="none"
+      aria-hidden="true"
+      animate={{ opacity: [1, 1, 0.45] }}
+      transition={{ duration: EFFECT_S + 1, times: [0, 0.6, 1] }}
+    >
+      {ROOTS.map((d, index) => (
+        <motion.path
+          key={d}
+          d={d}
+          className="root"
+          strokeWidth={index < 3 ? 2.4 : 1.2}
+          initial={{ pathLength: 0 }}
+          animate={{ pathLength: 1 }}
+          transition={{
+            delay: index < 3 ? 0.1 : 0.45 + index * 0.05,
+            duration: 0.8,
+            ease: 'easeOut',
+          }}
+        />
+      ))}
+    </motion.svg>
+  )
+}
 
 /**
  * Choix de la première guilde : trois bannières côte à côte. Le choix ouvre une cérémonie,
@@ -991,13 +1114,14 @@ function Allegiance() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.7 }}
+            transition={{ duration: 0.4 }}
           >
+            <OathEffect guild={sworn} />
             <motion.div
               className="oath-emblem"
               initial={{ scale: 0.3, rotate: -20, opacity: 0 }}
               animate={{ scale: 1, rotate: 0, opacity: 1 }}
-              transition={{ delay: 0.3, type: 'spring', stiffness: 90, damping: 12 }}
+              transition={{ delay: EFFECT_S, type: 'spring', stiffness: 90, damping: 12 }}
             >
               <Entity kind={`guild-${sworn}`} />
             </motion.div>
@@ -1005,7 +1129,7 @@ function Allegiance() {
               className="oath-text"
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.9, duration: 0.6 }}
+              transition={{ delay: EFFECT_S + 0.5, duration: 0.6 }}
             >
               Vous prêtez allégeance à<strong>{GUILD_INFO[sworn].name}</strong>
             </motion.p>
@@ -1013,7 +1137,7 @@ function Allegiance() {
               className="oath-motto"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: 1.6, duration: 0.8 }}
+              transition={{ delay: EFFECT_S + 1, duration: 0.8 }}
             >
               « {GUILD_INFO[sworn].motto} »
             </motion.p>
