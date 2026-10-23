@@ -3,10 +3,18 @@
  * comme par l'interface. Elle ne contient que des types, des constantes,
  * des schémas de validation et des fonctions pures.
  */
+import { z } from 'zod'
+import { GUILDS } from './domain/catalog'
+
 export type { GuildId } from './domain/catalog'
 export { CHANGE_COST, GUILD_INFO, GUILDS } from './domain/catalog'
 export type { MemberError } from './domain/member'
 export type { MemberView } from './domain/view'
+
+/** Corps attendu pour choisir sa première guilde, ou demander à en changer. */
+export const ChooseGuildInput = z.object({
+  guild: z.enum(GUILDS),
+})
 
 /** Préfixe commun aux noms des flux de tous les membres. */
 export const MEMBER_STREAM_PREFIX = 'guild-member-'
