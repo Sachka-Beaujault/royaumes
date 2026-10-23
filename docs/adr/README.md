@@ -15,3 +15,4 @@ un nouvel ADR est rédigé et l'ancien prend le statut « remplacé ».
 | [0007](0007-saga-boite-envoi.md) | Saga orchestrée et boîte d'envoi transactionnelle pour les opérations entre modules | Accepté |
 | [0008](0008-donnees-personnelles.md) | Stockage classique pour la Taverne, et réécriture ciblée du journal pour l'effacement | Accepté |
 | [0009](0009-extraction-village.md) | Extraction du Village en service autonome, préparée mais non déployée | Accepté |
+| [0010](0010-module-guilde-stockage.md) | Module Guilde : journal pour l'appartenance et la Faille, tables classiques pour le chat | Accepté |
