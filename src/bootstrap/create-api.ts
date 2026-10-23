@@ -88,7 +88,7 @@ export function createApi({
 
   const tavern = createTavernModule({ db, clock })
   // La Guilde, comme le Marché, déclenche la distribution après ses commandes et ses consultations.
-  const guild = createGuildModule({ store, dispatch: () => dispatcher.dispatch(), clock })
+  const guild = createGuildModule({ store, db, dispatch: () => dispatcher.dispatch(), clock })
 
   // Droits des joueurs : chaque module fournit ses données personnelles. L'identité vient
   // en dernier : tant qu'elle n'est pas effacée, le joueur peut relancer un effacement interrompu.
@@ -118,6 +118,7 @@ export function createApi({
     ranking.channelPolicy,
     market.channelPolicy,
     tavern.channelPolicy,
+    ...guild.channelPolicies,
   ]
 
   // 2. Application principale : toutes ses routes sont préfixées par /api.
@@ -162,6 +163,8 @@ export function createApi({
         },
         // Durée de conservation des données de la Taverne.
         tavern: tavern.dailyTask,
+        // Durée de conservation des messages des chats de guilde.
+        guild: guild.dailyTask,
         // Relais du flux publié par le Village extrait, s'il y en a un.
         ...(remoteRealm ? { realm: remoteRealm.dailyTask } : {}),
       },
