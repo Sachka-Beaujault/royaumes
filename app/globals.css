@@ -1023,3 +1023,65 @@ button.difficulty[aria-pressed='true'] { border-color: var(--guild-bright); back
 /* Bouton de l'apparence. */
 .theme-toggle { font-size: 1.35rem; }
 .gate-theme { display: flex; justify-content: flex-end; color: var(--muted); }
+
+/* Expédition ouverte, dans les listes du Donjon et de la Faille. */
+.games li.expedition-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--guild) 22%, transparent), transparent);
+  border: 1px solid var(--panel-edge);
+  border-left: 3px solid var(--guild-bright);
+}
+.expedition-host { flex: 1; min-width: 12em; }
+.expedition-host strong { color: var(--parchment); }
+.expedition-seats { display: inline-flex; gap: 4px; }
+.expedition-seats span { width: 12px; height: 16px; border: 1px solid var(--gold-dim); border-radius: 6px 6px 1px 1px; }
+.expedition-seats span[data-taken='true'] { background: var(--guild-bright); border-color: var(--guild-bright); }
+
+/* Marché : un échange conclu, les deux lots se croisent, puis le sceau du marché. */
+.deal {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 18px;
+  background: radial-gradient(circle, color-mix(in srgb, var(--guild) 45%, var(--bg)), color-mix(in srgb, var(--bg) 92%, #000));
+  cursor: pointer;
+}
+.deal-table { position: relative; width: min(560px, 92vw); height: 300px; display: grid; place-items: center; }
+/* Les deux lots partent de chaque côté de la table et se croisent, l'un par-dessus, l'autre par-dessous. */
+.deal-table > * { grid-area: 1 / 1; }
+.deal-seal { z-index: 2; }
+.deal-lot {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 16px 18px;
+  background: linear-gradient(180deg, var(--panel), var(--stone));
+  border: 1px solid var(--gold-dim);
+  box-shadow: 0 14px 30px rgb(var(--shade) / 0.5);
+}
+.deal-seal {
+  width: 92px;
+  height: 92px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-size: 3rem;
+  background: radial-gradient(circle at 35% 30%, var(--guild-bright), var(--guild) 55%, var(--guild-deep));
+  box-shadow: 0 6px 16px rgb(var(--shade) / 0.5);
+}
+.deal-seal .entity-icon { color: var(--on-guild) !important; }
+.deal-title {
+  margin: 0;
+  font-family: var(--font-display), serif;
+  font-size: 2rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--parchment);
+}

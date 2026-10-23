@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 import { useChannel } from '@/platform/realtime/use-channel'
 import { Entity } from '@/ui/entity'
+import { ExpeditionRow } from '@/ui/expedition-row'
 import { Fighter } from '@/ui/fighter'
 import { useCountdown } from '@/ui/use-countdown'
 import type { DungeonApi } from './api'
@@ -133,15 +134,13 @@ export function DungeonLobby() {
         {games?.length === 0 && <p className="muted">Aucune expédition ouverte pour le moment.</p>}
         <ul className="games">
           {games?.map((game) => (
-            <li key={game.gameId}>
-              <span>
-                Expédition de {game.hostName}{' '}
-                <span className="muted">
-                  ({game.heroCount}/{MAX_HEROES} héros)
-                </span>
-              </span>
-              <Link href={`/dungeon/${game.gameId}`}>Rejoindre</Link>
-            </li>
+            <ExpeditionRow
+              key={game.gameId}
+              href={`/dungeon/${game.gameId}`}
+              hostName={game.hostName}
+              heroCount={game.heroCount}
+              maxHeroes={MAX_HEROES}
+            />
           ))}
         </ul>
       </section>

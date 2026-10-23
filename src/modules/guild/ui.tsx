@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { type ChannelEvent, useChannel } from '@/platform/realtime/use-channel'
 import { Entity } from '@/ui/entity'
+import { ExpeditionRow } from '@/ui/expedition-row'
 import { Fighter } from '@/ui/fighter'
 import { useCountdown } from '@/ui/use-countdown'
 import type { GuildApi } from './api'
@@ -452,15 +453,13 @@ function RiftPanel() {
       {overview.runs.length === 0 && <p className="muted">Aucune expédition ouverte.</p>}
       <ul className="games">
         {overview.runs.map((run) => (
-          <li key={run.runId}>
-            <span>
-              Expédition de {run.hostName}{' '}
-              <span className="muted">
-                ({run.heroCount}/{MAX_HEROES} héros)
-              </span>
-            </span>
-            <Link href={`/guild/rift/${run.runId}`}>Rejoindre</Link>
-          </li>
+          <ExpeditionRow
+            key={run.runId}
+            href={`/guild/rift/${run.runId}`}
+            hostName={run.hostName}
+            heroCount={run.heroCount}
+            maxHeroes={MAX_HEROES}
+          />
         ))}
       </ul>
 

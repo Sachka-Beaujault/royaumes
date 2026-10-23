@@ -1,6 +1,6 @@
 'use client'
 import { hc } from 'hono/client'
-import { motion } from 'motion/react'
+import { AnimatePresence, motion } from 'motion/react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { RESOURCES, type Resource } from '@/modules/realm/contracts'
 import { useChannel } from '@/platform/realtime/use-channel'
@@ -47,6 +47,9 @@ const ERRORS: Record<OfferError['code'] | 'INVALID_INPUT', string> = {
   EXPIRED: "L'offre a expiré.",
   NOT_EXPIRED: "L'offre n'a pas expiré.",
 }
+
+/** Durée de l'animation d'un échange conclu, en millisecondes. */
+const DEAL_MS = 2600
 
 /** Délai entre deux relectures, et nombre maximal de relectures, comme pour le Classement. */
 const RETRY_MS = 1_000
@@ -129,7 +132,7 @@ export function MarketScreen() {
   })
 
   // COMMANDES : chaque réponse contient la vue de l'offre, ou une erreur.
-  async function handle(res: Response) {
+  async function handle(res: Response): Promise<OfferView | null> {
     const body = (await res.json()) as { view: OfferView } | { error: { code: string } }
     if ('error' in body) {
       setMessage({ text: ERRORS[body.error.code as keyof typeof ERRORS] ?? 'Erreur.', error: true })
@@ -137,7 +140,16 @@ export function MarketScreen() {
       setMessage({ text: outcomeOf(body.view), error: body.view.status === 'rejected' })
     }
     await refresh()
+    return 'view' in body ? body.view : null
   }
+
+  // Échange conclu : les deux lots se croisent sur la table du marchand, puis s'effacent.
+  const [deal, setDeal] = useState<{ paid: Amounts; received: Amounts } | null>(null)
+  useEffect(() => {
+    if (!deal) return
+    const timer = setTimeout(() => setDeal(null), DEAL_MS)
+    return () => clearTimeout(timer)
+  }, [deal])
 
   const publish = async () =>
     handle(
@@ -145,8 +157,11 @@ export function MarketScreen() {
         json: { give: { [give.resource]: give.amount }, want: { [want.resource]: want.amount } },
       }),
     )
-  const acceptOffer = async (id: string) =>
-    handle(await client.offers[':id'].accept.$post({ param: { id } }))
+  async function acceptOffer(id: string) {
+    const view = await handle(await client.offers[':id'].accept.$post({ param: { id } }))
+    // L'acheteur paie les ressources demandées, et reçoit les ressources cédées.
+    if (view?.status === 'completed') setDeal({ paid: view.want, received: view.give })
+  }
   const withdrawOffer = async (id: string) =>
     handle(await client.offers[':id'].withdraw.$post({ param: { id } }))
 
@@ -218,6 +233,57 @@ export function MarketScreen() {
           </p>
         )}
       </section>
+
+      <AnimatePresence>
+        {deal && (
+          <motion.div
+            className="deal"
+            role="status"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            onClick={() => setDeal(null)}
+          >
+            <div className="deal-table">
+              <motion.div
+                className="deal-lot"
+                initial={{ x: -170, y: 0, opacity: 0 }}
+                animate={{ x: [-170, -170, 170], y: [0, 0, -80, 0], opacity: [0, 1, 1, 1] }}
+                transition={{ duration: 1.5, times: [0, 0.25, 0.65, 1], ease: 'easeInOut' }}
+              >
+                <span className="muted">Vous cédez</span>
+                <Lot amounts={deal.paid} />
+              </motion.div>
+              <motion.div
+                className="deal-seal"
+                initial={{ scale: 0, rotate: -40 }}
+                animate={{ scale: [0, 1.25, 1], rotate: 0 }}
+                transition={{ delay: 1.5, duration: 0.5 }}
+              >
+                <Entity kind="deal" />
+              </motion.div>
+              <motion.div
+                className="deal-lot"
+                initial={{ x: 170, y: 0, opacity: 0 }}
+                animate={{ x: [170, 170, -170], y: [0, 0, 80, 0], opacity: [0, 1, 1, 1] }}
+                transition={{ duration: 1.5, times: [0, 0.25, 0.65, 1], ease: 'easeInOut' }}
+              >
+                <span className="muted">Vous recevez</span>
+                <Lot amounts={deal.received} />
+              </motion.div>
+            </div>
+            <motion.p
+              className="deal-title"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 1.7, duration: 0.5 }}
+            >
+              Marché conclu !
+            </motion.p>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <h2 className="section-title">Les étals</h2>
       {others.length === 0 && <p className="muted">Aucune offre disponible.</p>}
