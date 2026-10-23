@@ -1,9 +1,11 @@
 'use client'
 import { hc } from 'hono/client'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { type FormEvent, useCallback, useEffect, useState } from 'react'
 import { useChannel } from '@/platform/realtime/use-channel'
 import { Entity } from '@/ui/entity'
+import { useCountdown } from '@/ui/use-countdown'
 import type { GuildApi } from './api'
 import {
   CHANGE_COST,
@@ -14,9 +16,21 @@ import {
   type GuildId,
   type GuildMessage,
   guildChatChannel,
+  MAX_HEROES,
   MESSAGE_MAX_LENGTH,
   type MemberError,
   type MemberView,
+  type OpenRun,
+  RIFT_MONSTERS,
+  ROLE_STATS,
+  ROLES,
+  type Role,
+  type RunAction,
+  type RunEffect,
+  type RunError,
+  type RunMonster,
+  type RunView,
+  runChannel,
 } from './contracts'
 
 /** Client HTTP typé, déduit de la sous-application Hono du module. */
@@ -272,6 +286,7 @@ export function GuildScreen({ userId }: { userId: string }) {
           </p>
         )}
       </section>
+      <RiftPanel />
       <GuildChat key={current} guild={current} userId={userId} />
       <section className="panel" aria-label="Changer de guilde">
         <p>
@@ -297,6 +312,407 @@ export function GuildScreen({ userId }: { userId: string }) {
         ))}
         {error && <p className="error">{error}</p>}
       </section>
+    </>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// La Faille
+// ---------------------------------------------------------------------------
+
+/** Erreurs que l'API de la Faille peut renvoyer : erreurs métier et erreur de validation. */
+type RiftApiError = {
+  code: RunError['code'] | 'NO_GUILD' | 'ALREADY_ENTERED_TODAY' | 'INVALID_INPUT'
+  message?: string
+}
+
+/** Message affiché au joueur pour chaque erreur de la Faille. */
+const RIFT_ERRORS: Record<RiftApiError['code'], string> = {
+  INVALID_INPUT: 'Saisie invalide.',
+  NO_GUILD: "Choisissez d'abord une guilde.",
+  ALREADY_ENTERED_TODAY: "Vous avez déjà rejoint la Faille aujourd'hui : revenez demain.",
+  RUN_NOT_FOUND: 'Expédition introuvable.',
+  ALREADY_EXISTS: 'Expédition déjà ouverte.',
+  WRONG_PHASE: "Cette action n'est plus possible.",
+  RUN_FULL: "L'expédition est complète.",
+  ALREADY_JOINED: "Vous faites déjà partie de l'expédition.",
+  WRONG_GUILD: "Cette expédition est réservée aux membres d'une autre guilde.",
+  NOT_A_MEMBER: "Vous ne faites pas partie de l'expédition.",
+  NOT_HOST: "Seul l'hôte peut lancer l'expédition.",
+  HERO_DOWN: 'Votre héros est tombé.',
+  ROUND_OVER: 'La manche est déjà terminée.',
+  ALREADY_CHOSEN: 'Vous avez déjà choisi votre action.',
+  INVALID_TARGET: 'Cible invalide.',
+}
+
+/** Libellé de chaque rôle. */
+const ROLE_LABELS: Record<Role, string> = {
+  tank: 'Tank',
+  healer: 'Soigneur',
+  attacker: 'Attaquant',
+}
+
+/** Description courte de chaque rôle, affichée lors de son choix. */
+const ROLE_HINTS: Record<Role, string> = {
+  tank: 'attire les coups des monstres et en subit moins',
+  healer: 'rend deux fois plus de points de vie',
+  attacker: 'inflige les plus lourds dégâts',
+}
+
+/** Liste de choix du rôle, avec ses caractéristiques. */
+function RoleSelect({ value, onChange }: { value: Role; onChange: (role: Role) => void }) {
+  return (
+    <select aria-label="Rôle" value={value} onChange={(e) => onChange(e.target.value as Role)}>
+      {ROLES.map((role) => (
+        <option key={role} value={role}>
+          {ROLE_LABELS[role]} : {ROLE_STATS[role].hp} PV, {ROLE_HINTS[role]}
+        </option>
+      ))}
+    </select>
+  )
+}
+
+/** Date d'un jour de la Faille, au format local : « vendredi 23 octobre ». */
+const dateOf = (day: string) =>
+  new Date(`${day}T12:00:00Z`).toLocaleDateString('fr-FR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  })
+
+/**
+ * Accès à la Faille depuis l'écran de la Guilde : la Faille du jour et celles des jours
+ * suivants, les expéditions ouvertes de la guilde, et l'ouverture d'une expédition.
+ */
+function RiftPanel() {
+  const router = useRouter()
+  const [overview, setOverview] = useState<
+    | { calendar: { day: string; name: string }[]; runs: OpenRun[]; enteredToday: boolean }
+    | undefined
+  >(undefined)
+  const [role, setRole] = useState<Role>('tank')
+  const [error, setError] = useState<string | null>(null)
+
+  const refresh = useCallback(async () => {
+    const res = await client.rift.$get()
+    if (res.ok) setOverview(await res.json())
+  }, [])
+
+  useEffect(() => {
+    refresh()
+  }, [refresh])
+
+  async function open() {
+    const res = await client.rift.runs.$post({ json: { role } })
+    const body = await res.json()
+    if ('error' in body) setError(RIFT_ERRORS[(body.error as RiftApiError).code])
+    else router.push(`/guild/rift/${body.runId}`)
+  }
+
+  if (!overview) return null
+  const [today, ...next] = overview.calendar
+  return (
+    <section className="panel" aria-label="La Faille">
+      <div className="row" style={{ justifyContent: 'space-between' }}>
+        <h2>
+          <Entity kind="rift" /> {today.name}
+        </h2>
+        <button className="link" type="button" onClick={refresh}>
+          Actualiser
+        </button>
+      </div>
+      <p className="muted">
+        Un donjon sans fin, le même pour toutes les guildes aujourd'hui : chaque étage est plus
+        difficile que le précédent, et un boss garde un étage sur cinq. Une seule expédition par
+        joueur et par jour.
+      </p>
+      {overview.enteredToday ? (
+        <p className="muted">Vous avez déjà affronté la Faille aujourd'hui : revenez demain.</p>
+      ) : (
+        <div className="row">
+          <RoleSelect value={role} onChange={setRole} />
+          <button type="button" onClick={open}>
+            Ouvrir une expédition
+          </button>
+        </div>
+      )}
+      {error && <p className="error">{error}</p>}
+      <h3>Expéditions ouvertes de la guilde</h3>
+      {overview.runs.length === 0 && <p className="muted">Aucune expédition ouverte.</p>}
+      <ul className="games">
+        {overview.runs.map((run) => (
+          <li key={run.runId}>
+            <span>
+              Expédition de {run.hostName}{' '}
+              <span className="muted">
+                ({run.heroCount}/{MAX_HEROES} héros)
+              </span>
+            </span>
+            <Link href={`/guild/rift/${run.runId}`}>Voir</Link>
+          </li>
+        ))}
+      </ul>
+      <h3>Les jours suivants</h3>
+      <ul className="log">
+        {next.map(({ day, name }) => (
+          <li key={day}>
+            <span className="muted">{dateOf(day)} :</span> {name}
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
+/** Nom affiché d'un monstre, numéroté si l'étage en contient plusieurs du même type. */
+function monsterName(monster: RunMonster, monsters: RunMonster[]) {
+  const sameKind = monsters.filter((other) => other.kind === monster.kind)
+  const name = RIFT_MONSTERS[monster.kind].name
+  return sameKind.length > 1 ? `${name} ${sameKind.indexOf(monster) + 1}` : name
+}
+
+/** Description d'une action, telle que le joueur l'a choisie. */
+function describeAction(action: RunAction, nameOf: (id: string) => string) {
+  if (action.type === 'attack') return `attaquer ${nameOf(action.target)}`
+  if (action.type === 'heal') return `soigner ${nameOf(action.target)}`
+  return 'se défendre'
+}
+
+/** Préposition « de » devant un verbe à l'infinitif, élidée devant une voyelle. */
+const ofVerb = (text: string) => (/^[aeéiou]/i.test(text) ? `d'${text}` : `de ${text}`)
+
+/** Description d'un effet de la dernière manche. */
+function describeEffect(effect: RunEffect, nameOf: (id: string) => string) {
+  return effect.kind === 'damage'
+    ? `${nameOf(effect.source)} inflige ${effect.amount} dégâts à ${nameOf(effect.target)}`
+    : `${nameOf(effect.source)} rend ${effect.amount} points de vie à ${nameOf(effect.target)}`
+}
+
+/** Écran d'une expédition de la Faille : salon, étages successifs et fin de l'expédition. */
+export function RiftRun({ runId, userId }: { runId: string; userId: string }) {
+  // undefined : chargement en cours ; null : expédition introuvable.
+  const [view, setView] = useState<RunView | null | undefined>(undefined)
+  const [role, setRole] = useState<Role>('healer')
+  const [error, setError] = useState<string | null>(null)
+  const param = { id: runId }
+
+  // REQUÊTE : lecture de la vue de l'expédition, filtrée pour le joueur.
+  const refresh = useCallback(async () => {
+    const res = await client.rift.runs[':id'].$get({ param: { id: runId } })
+    if (res.ok) setView((await res.json()).view)
+    else if (res.status === 404) setView(null)
+  }, [runId])
+
+  useEffect(() => {
+    refresh()
+  }, [refresh])
+
+  // TEMPS RÉEL : seuls les héros écoutent le canal de l'expédition. Le canal ne transmet
+  // aucune donnée : chaque notification provoque une relecture de la vue filtrée.
+  const status = useChannel(view?.isMember ? runChannel(runId) : null, refresh)
+
+  // COMMANDES : chaque réponse contient la vue à jour, ou une erreur.
+  function handle(body: { view: RunView } | { error: RiftApiError }) {
+    if ('error' in body) {
+      setError(RIFT_ERRORS[body.error.code])
+      refresh()
+    } else {
+      setError(null)
+      setView(body.view)
+    }
+  }
+  const join = async () =>
+    handle(await (await client.rift.runs[':id'].join.$post({ param, json: { role } })).json())
+  const start = async () =>
+    handle(await (await client.rift.runs[':id'].start.$post({ param })).json())
+  async function act(action: RunAction) {
+    if (!view) return
+    const res = await client.rift.runs[':id'].action.$post({
+      param,
+      json: { round: view.round, action },
+    })
+    handle(await res.json())
+  }
+
+  // ÉCHÉANCE : lorsque le compte à rebours d'une manche atteint zéro, la commande d'échéance
+  // fait enregistrer la résolution, et donc notifier tous les héros.
+  const checkDeadline = useCallback(async () => {
+    const res = await client.rift.runs[':id'].deadline.$post({ param: { id: runId } })
+    if (res.ok) setView((await res.json()).view)
+  }, [runId])
+  const remaining = useCountdown(
+    view?.isMember && view.phase === 'combat' ? view.deadline : null,
+    checkDeadline,
+  )
+
+  const title = (
+    <div className="row" style={{ justifyContent: 'space-between' }}>
+      <h1>
+        <Entity kind="rift" /> {view?.name ?? 'La Faille'}
+      </h1>
+      {view?.isMember && (
+        <span className="status" data-status={status}>
+          {STATUS_LABELS[status]}
+        </span>
+      )}
+    </div>
+  )
+
+  if (view === undefined) return title
+  if (view === null) {
+    return (
+      <>
+        {title}
+        <p className="error">{RIFT_ERRORS.RUN_NOT_FOUND}</p>
+        <Link href="/guild">Retour à la Guilde</Link>
+      </>
+    )
+  }
+
+  // Noms des combattants, pour décrire les actions et les effets.
+  const nameOf = (id: string) => {
+    const hero = view.heroes.find((h) => h.id === id)
+    if (hero) return hero.name
+    const monster = view.monsters.find((m) => m.id === id)
+    return monster ? monsterName(monster, view.monsters) : id
+  }
+  const me = view.heroes.find((hero) => hero.id === userId)
+  const standingMonsters = view.monsters.filter((monster) => monster.hp > 0)
+  const standingHeroes = view.heroes.filter((hero) => hero.hp > 0)
+
+  return (
+    <>
+      {title}
+      <p className="muted">
+        Expédition de la guilde <GuildName guild={view.guild} />
+      </p>
+
+      {/* Héros de l'expédition. */}
+      <section className="panel heroes" aria-label="Héros">
+        {view.heroes.map((hero) => (
+          <div key={hero.id} className="fighter" data-down={hero.hp <= 0}>
+            <span>
+              <Entity kind={hero.role} /> {hero.name}{' '}
+              <span className="muted">({ROLE_LABELS[hero.role]})</span>
+              {hero.id === view.hostId && <span className="muted"> (hôte)</span>}
+            </span>
+            <span className="muted">
+              {hero.hp}/{hero.maxHp} PV
+            </span>
+            {view.phase === 'combat' && hero.ready && <span className="ok">prêt</span>}
+          </div>
+        ))}
+      </section>
+
+      {/* Salon : rejoindre ou lancer l'expédition. */}
+      {view.phase === 'lobby' && (
+        <div className="panel">
+          {!view.isMember && view.heroes.length < MAX_HEROES && (
+            <div className="row">
+              <RoleSelect value={role} onChange={setRole} />
+              <button type="button" onClick={join}>
+                Rejoindre l'expédition
+              </button>
+            </div>
+          )}
+          {view.isHost && (
+            <button type="button" onClick={start}>
+              Entrer dans la Faille
+            </button>
+          )}
+          {view.isMember && !view.isHost && (
+            <p className="muted">En attente du lancement par l'hôte.</p>
+          )}
+        </div>
+      )}
+
+      {/* Combat : monstres de l'étage, compte à rebours et choix de l'action. */}
+      {view.phase === 'combat' && (
+        <div className="panel">
+          <div className="row" style={{ justifyContent: 'space-between' }}>
+            <h2>
+              Étage {view.floor}
+              {view.bossFloor && ' - le Gardien'}, manche {view.round}
+            </h2>
+            {remaining !== null && <span className="countdown">{remaining} s</span>}
+          </div>
+          <div className="monsters">
+            {view.monsters.map((monster) => (
+              <div key={monster.id} className="fighter" data-down={monster.hp <= 0}>
+                <span>
+                  <Entity kind={monster.kind} /> {monsterName(monster, view.monsters)}
+                </span>
+                <span className="muted">
+                  {monster.hp}/{monster.maxHp} PV
+                </span>
+              </div>
+            ))}
+          </div>
+          {me && me.hp > 0 && !me.action && (
+            <div className="actions">
+              {standingMonsters.map((monster) => (
+                <button
+                  key={monster.id}
+                  type="button"
+                  onClick={() => act({ type: 'attack', target: monster.id })}
+                >
+                  Attaquer {monsterName(monster, view.monsters)}
+                </button>
+              ))}
+              <button type="button" onClick={() => act({ type: 'defend' })}>
+                Se défendre
+              </button>
+              {standingHeroes.map((hero) => (
+                <button
+                  key={hero.id}
+                  type="button"
+                  onClick={() => act({ type: 'heal', target: hero.id })}
+                >
+                  Soigner {hero.name}
+                </button>
+              ))}
+            </div>
+          )}
+          {me?.action && (
+            <p className="muted">
+              Votre choix : {describeAction(me.action, nameOf)}. En attente des autres héros.
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Fin de l'expédition. */}
+      {view.phase === 'ended' && (
+        <div className="panel">
+          <h2>Le groupe est tombé</h2>
+          <p>
+            Étages franchis : <strong>{view.floorsCleared}</strong>
+          </p>
+          <Link href="/guild">Retour à la Guilde</Link>
+        </div>
+      )}
+
+      {/* Résultat de la dernière manche, connu de tous une fois la manche résolue. */}
+      {view.lastRound && (
+        <section className="panel" aria-label="Dernière manche">
+          <h2>Manche {view.lastRound.round}</h2>
+          <ul className="log">
+            {Object.entries(view.lastRound.actions).map(([heroId, action]) => (
+              <li key={heroId}>
+                {nameOf(heroId)} a choisi {ofVerb(describeAction(action, nameOf))}.
+              </li>
+            ))}
+            {view.lastRound.effects.map((effect) => (
+              // Chaque combattant n'agit qu'une fois par manche : ce triplet identifie l'effet.
+              <li key={`${effect.kind}-${effect.source}-${effect.target}`}>
+                {describeEffect(effect, nameOf)}.
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {error && <p className="error">{error}</p>}
     </>
   )
 }

@@ -33,6 +33,14 @@ export const theme: Record<string, Look> = {
   'guild-red': { glyph: '🐉', label: 'Ordre du Dragon' },
   'guild-green': { glyph: '🌳', label: 'Cercle du Chêne' },
   'guild-blue': { glyph: '🌊', label: "Garde de l'Onde" },
+  rift: { glyph: '🌀', label: 'La Faille' },
+  tank: { glyph: '🧱', label: 'Tank' },
+  healer: { glyph: '✨', label: 'Soigneur' },
+  attacker: { glyph: '🗡️', label: 'Attaquant' },
+  shade: { glyph: '👻', label: 'Ombre' },
+  ghoul: { glyph: '🧟', label: 'Goule' },
+  golem: { glyph: '🗿', label: 'Golem' },
+  warden: { glyph: '🐲', label: 'Gardien de la Faille' },
 }
 
 /** Apparence d'une entité ; une apparence neutre si l'entité n'est pas décrite. */
