@@ -1,14 +1,19 @@
 'use client'
 import { hc } from 'hono/client'
 import { useRouter } from 'next/navigation'
-import { useCallback, useEffect, useState } from 'react'
+import { type FormEvent, useCallback, useEffect, useState } from 'react'
+import { useChannel } from '@/platform/realtime/use-channel'
 import { Entity } from '@/ui/entity'
 import type { GuildApi } from './api'
 import {
   CHANGE_COST,
+  type ChatError,
   GUILD_INFO,
   GUILDS,
   type GuildId,
+  type GuildMessage,
+  guildChatChannel,
+  MESSAGE_MAX_LENGTH,
   type MemberError,
   type MemberView,
 } from './contracts'
@@ -40,8 +45,124 @@ function GuildName({ guild }: { guild: GuildId }) {
   )
 }
 
-/** Écran de la Guilde : choix de la première guilde, puis changement de guilde payant. */
-export function GuildScreen() {
+/** Libellé affiché pour chaque état de la connexion temps réel. */
+const STATUS_LABELS = {
+  connecting: 'Connexion...',
+  open: 'Temps réel connecté',
+  reconnecting: 'Reconnexion...',
+} as const
+
+/** Message affiché au joueur pour chaque erreur du chat. */
+function chatErrorText(error: ChatError | { code: 'INVALID_INPUT' }): string {
+  switch (error.code) {
+    case 'NOT_A_MEMBER':
+      return 'Ce chat est réservé aux membres de la guilde.'
+    case 'EMPTY_MESSAGE':
+      return 'Le message est vide.'
+    case 'MESSAGE_TOO_LONG':
+      return `Le message dépasse ${error.max} caractères.`
+    case 'TOO_MANY_MESSAGES':
+      return `Trop de messages : patientez ${Math.ceil(error.retryAfterMs / 1000)} secondes.`
+    case 'INVALID_INPUT':
+      return 'Saisie invalide.'
+  }
+}
+
+/** Ajoute des messages à la liste, sans doublon, dans l'ordre de leurs identifiants. */
+function merge(current: GuildMessage[], added: GuildMessage[]): GuildMessage[] {
+  const byId = new Map(current.map((message) => [message.id, message]))
+  for (const message of added) byId.set(message.id, message)
+  return [...byId.values()].sort((a, b) => a.id - b.id)
+}
+
+/** Heure d'un message, au format local. */
+const timeOf = (at: number) =>
+  new Date(at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+
+/**
+ * Chat de la guilde du joueur, mis à jour en temps réel. Il est recréé lorsque le joueur
+ * change de guilde : la liste repart vide, et le canal de la nouvelle guilde est ouvert.
+ */
+function GuildChat({ guild, userId }: { guild: GuildId; userId: string }) {
+  const [messages, setMessages] = useState<GuildMessage[]>([])
+  const [draft, setDraft] = useState('')
+  const [error, setError] = useState<string | null>(null)
+
+  // REQUÊTE : les derniers messages du chat.
+  const refresh = useCallback(async () => {
+    const res = await client.chat.$get()
+    if (!res.ok) return
+    const body = await res.json()
+    if ('messages' in body) setMessages((current) => merge(current, body.messages))
+  }, [])
+
+  // TEMPS RÉEL : chaque nouveau message est reçu avec son contenu, et ajouté à la liste.
+  const status = useChannel(guildChatChannel(guild), (event) => {
+    setMessages((current) => merge(current, [event.data as unknown as GuildMessage]))
+  })
+
+  // À chaque ouverture du canal, y compris après une reconnexion, l'historique est relu :
+  // le canal ne diffuse que les messages publiés après l'abonnement.
+  useEffect(() => {
+    if (status === 'open') refresh()
+  }, [status, refresh])
+
+  // COMMANDE : publication d'un message.
+  async function send(event: FormEvent) {
+    event.preventDefault()
+    const res = await client.chat.$post({ json: { body: draft } })
+    const body = await res.json()
+    if ('error' in body) {
+      setError(chatErrorText(body.error as ChatError))
+    } else {
+      setError(null)
+      setDraft('')
+      setMessages((current) => merge(current, [body.message]))
+    }
+  }
+
+  return (
+    <section className="panel" aria-label="Chat de la guilde">
+      <div className="row" style={{ justifyContent: 'space-between' }}>
+        <h2>Chat de la guilde</h2>
+        <span className="status" data-status={status}>
+          {STATUS_LABELS[status]}
+        </span>
+      </div>
+      {messages.length === 0 && <p className="muted">Aucun message pour le moment.</p>}
+      <ul className="messages">
+        {messages.map((message) => (
+          <li key={message.id} data-mine={message.authorId === userId || undefined}>
+            <span className="muted">{timeOf(message.postedAt)}</span>{' '}
+            <strong>{message.authorName}</strong> {message.body}
+          </li>
+        ))}
+      </ul>
+      <form className="row" onSubmit={send}>
+        <input
+          aria-label="Votre message"
+          value={draft}
+          maxLength={MESSAGE_MAX_LENGTH * 2}
+          onChange={(e) => setDraft(e.target.value)}
+          placeholder="Votre message"
+          style={{ flex: 1 }}
+        />
+        <button type="submit">Envoyer</button>
+      </form>
+      {error && (
+        <p className="error" role="alert">
+          {error}
+        </p>
+      )}
+    </section>
+  )
+}
+
+/**
+ * Écran de la Guilde : choix de la première guilde, puis chat de la guilde et changement de
+ * guilde payant.
+ */
+export function GuildScreen({ userId }: { userId: string }) {
   const router = useRouter()
   // undefined : chargement en cours.
   const [view, setView] = useState<MemberView | undefined>(undefined)
@@ -141,6 +262,7 @@ export function GuildScreen() {
           </p>
         )}
       </section>
+      <GuildChat key={current} guild={current} userId={userId} />
       <section className="panel" aria-label="Changer de guilde">
         <p>
           Changer de guilde coûte <Entity kind="gold" /> {CHANGE_COST.gold}, prélevées dans votre
