@@ -1,7 +1,7 @@
 'use client'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import type { ReactNode } from 'react'
+import { usePathname, useRouter } from 'next/navigation'
+import { type ReactNode, useEffect } from 'react'
 import { authClient } from '@/platform/auth/client'
 import { Entity } from './entity'
 
@@ -12,11 +12,33 @@ export const NAV = [
   { href: '/ranking', kind: 'ranking', label: 'Classement' },
   { href: '/market', kind: 'market', label: 'Marché' },
   { href: '/tavern', kind: 'tavern', label: 'Taverne' },
+  { href: '/guild', kind: 'guild', label: 'Guilde' },
 ]
 
-/** Cadre de l'espace de jeu : navigation, nom du joueur, accès à ses données et déconnexion. */
-export function AppShell({ userName, children }: { userName: string; children: ReactNode }) {
+/** Page du choix de la guilde, seule page ouverte à un joueur qui n'en a pas encore. */
+const GUILD_PAGE = '/guild'
+
+/**
+ * Cadre de l'espace de jeu : navigation, nom du joueur, accès à ses données et déconnexion.
+ * Un joueur sans guilde est conduit à la page de la Guilde ; les autres pages ne sont pas
+ * affichées tant qu'il n'en a pas choisi une.
+ */
+export function AppShell({
+  userName,
+  hasGuild,
+  children,
+}: {
+  userName: string
+  hasGuild: boolean
+  children: ReactNode
+}) {
   const pathname = usePathname()
+  const router = useRouter()
+  const allowed = hasGuild || pathname.startsWith(GUILD_PAGE) || pathname === '/account'
+
+  useEffect(() => {
+    if (!allowed) router.replace(GUILD_PAGE)
+  }, [allowed, router])
 
   async function signOut() {
     // La session est supprimée côté serveur, puis la page est entièrement rechargée,
@@ -47,7 +69,7 @@ export function AppShell({ userName, children }: { userName: string; children: R
           Déconnexion
         </button>
       </nav>
-      {children}
+      {allowed && children}
     </>
   )
 }

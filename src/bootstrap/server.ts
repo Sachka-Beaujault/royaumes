@@ -1,3 +1,5 @@
+import { createGuildReader } from '@/modules/guild'
+import type { GuildId } from '@/modules/guild/contracts'
 import { createBetterAuth } from '@/platform/auth/better-auth'
 import type { AuthPort, AuthUser } from '@/platform/auth/port'
 import { createDatabase } from '@/platform/db/client'
@@ -11,6 +13,8 @@ interface Server {
   auth: AuthPort
   /** Résolue lorsque la base de données est prête. */
   ready: Promise<void>
+  /** Guilde d'un joueur, utilisée par la mise en page du jeu ; null s'il n'en a choisi aucune. */
+  guildOf: (playerId: string) => Promise<GuildId | null>
 }
 
 /**
@@ -53,6 +57,7 @@ export function getServer(): Server {
       }),
       auth,
       ready,
+      guildOf: createGuildReader(store).guildOf,
     }
   }
   return globalForServer.royaumes
@@ -67,4 +72,11 @@ export async function currentUser(headers: Headers): Promise<AuthUser | null> {
   const { auth, ready } = getServer()
   await ready
   return auth.getUser(headers)
+}
+
+/** Guilde du joueur connecté, pour les pages rendues sur le serveur ; null s'il n'en a aucune. */
+export async function currentGuild(playerId: string): Promise<GuildId | null> {
+  const { guildOf, ready } = getServer()
+  await ready
+  return guildOf(playerId)
 }

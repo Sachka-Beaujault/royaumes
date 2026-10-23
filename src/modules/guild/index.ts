@@ -30,4 +30,18 @@ export function createGuildModule({ store, dispatch, clock }: GuildModuleDeps) {
   }
 }
 
+/**
+ * Lecture de la guilde d'un joueur, pour les pages rendues sur le serveur : la mise en page du
+ * jeu y vérifie qu'un joueur a choisi sa guilde avant de lui présenter les autres pages.
+ */
+export function createGuildReader(store: EventStore) {
+  const repo = createEventStoreMemberRepository(store)
+  return {
+    async guildOf(playerId: string) {
+      const { state } = await repo.load(playerId)
+      return state.guild
+    },
+  }
+}
+
 export type { GuildApi } from './api'

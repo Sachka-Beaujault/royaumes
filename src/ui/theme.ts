@@ -29,6 +29,10 @@ export const theme: Record<string, Look> = {
   ranking: { glyph: '🏆', label: 'Classement' },
   market: { glyph: '⚖️', label: 'Marché' },
   tavern: { glyph: '🍺', label: 'Taverne' },
+  guild: { glyph: '🛡️', label: 'Guilde' },
+  'guild-red': { glyph: '🐉', label: 'Ordre du Dragon' },
+  'guild-green': { glyph: '🌳', label: 'Cercle du Chêne' },
+  'guild-blue': { glyph: '🌊', label: "Garde de l'Onde" },
 }
 
 /** Apparence d'une entité ; une apparence neutre si l'entité n'est pas décrite. */
