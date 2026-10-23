@@ -805,6 +805,8 @@ function Allegiance() {
   const [error, setError] = useState<string | null>(null)
 
   async function swear(guild: GuildId) {
+    // Un seul serment : un second clic, pendant la cérémonie, est sans effet.
+    if (sworn !== null) return
     setError(null)
     setSworn(guild)
     // La cérémonie dure au moins OATH_MS, même si la réponse arrive plus tôt.
@@ -850,15 +852,29 @@ function Allegiance() {
             transition={{ delay: 0.2 + index * 0.15, duration: 0.6, ease: 'easeOut' }}
             whileHover={{ y: -10 }}
           >
-            <div className="banner-cloth">
-              <div className="banner-emblem">
+            {/* La bannière entière vaut serment, comme son bouton ; elle est retirée de l'ordre
+                de tabulation, le bouton restant le point d'accès au clavier. */}
+            <button
+              type="button"
+              className="banner-cloth"
+              tabIndex={-1}
+              aria-hidden="true"
+              disabled={sworn !== null}
+              onClick={() => swear(guild)}
+            >
+              <span className="banner-emblem">
                 <Entity kind={`guild-${guild}`} />
-              </div>
-              <h2>{GUILD_INFO[guild].name}</h2>
-              <p className="banner-motto">« {GUILD_INFO[guild].motto} »</p>
-              <p className="banner-portrait">{GUILD_INFO[guild].portrait}</p>
-            </div>
-            <button type="button" disabled={sworn !== null} onClick={() => swear(guild)}>
+              </span>
+              <span className="banner-name">{GUILD_INFO[guild].name}</span>
+              <span className="banner-motto">« {GUILD_INFO[guild].motto} »</span>
+              <span className="banner-portrait">{GUILD_INFO[guild].portrait}</span>
+            </button>
+            <button
+              type="button"
+              disabled={sworn !== null}
+              onClick={() => swear(guild)}
+              aria-label={`Prêter allégeance à ${GUILD_INFO[guild].name}`}
+            >
               Prêter allégeance
             </button>
           </motion.article>

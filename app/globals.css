@@ -324,6 +324,15 @@ input.amount { width: 5em; }
 @media (max-width: 720px) { .banners { grid-template-columns: 1fr; } }
 .banner { display: grid; gap: 16px; justify-items: center; }
 .banner-cloth {
+  /* La bannière est un bouton : les styles des boutons du jeu sont remis à zéro. */
+  font: inherit;
+  text-transform: none;
+  letter-spacing: normal;
+  color: inherit;
+  border: 0;
+  border-radius: 0;
+  cursor: pointer;
+  text-align: center;
   width: 100%;
   min-height: 390px;
   padding: 28px 20px 64px;
@@ -339,7 +348,14 @@ input.amount { width: 5em; }
   clip-path: polygon(0 0, 100% 0, 100% 86%, 50% 100%, 0 86%);
   box-shadow: inset 0 0 40px rgb(0 0 0 / 0.55);
 }
-.banner h2 { margin: 6px 0 0; font-size: 1.15rem; }
+.banner-name {
+  margin-top: 6px;
+  font-family: var(--font-display), serif;
+  font-weight: 700;
+  font-size: 1.15rem;
+  letter-spacing: 0.06em;
+  color: var(--parchment);
+}
 .banner-emblem {
   width: 108px;
   height: 108px;
@@ -352,8 +368,8 @@ input.amount { width: 5em; }
 }
 .banner-emblem .entity-icon,
 .oath-emblem .entity-icon { color: var(--parchment) !important; filter: drop-shadow(0 3px 4px rgb(0 0 0 / 0.6)); }
-.banner-motto { margin: 0; font-style: italic; color: var(--parchment); }
-.banner-portrait { margin: 0; font-size: 0.95rem; color: color-mix(in srgb, var(--parchment) 70%, transparent); }
+.banner-motto { margin: 0; font-style: italic; font-size: 1.05rem; color: var(--parchment); }
+.banner-portrait { margin: 0; font-size: 0.95rem; line-height: 1.45; color: color-mix(in srgb, var(--parchment) 70%, transparent); }
 .banner:hover .banner-cloth { filter: brightness(1.12); }
 
 .oath {
