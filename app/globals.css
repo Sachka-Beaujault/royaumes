@@ -837,3 +837,38 @@ button.difficulty[aria-pressed='true'] { border-color: var(--guild-bright); back
 .lot { display: inline-flex; gap: 10px; }
 .lot-item { display: grid; justify-items: center; font-size: 1.6rem; }
 .lot-item strong { font-family: var(--font-display), serif; font-size: 1.1rem; color: var(--parchment); }
+
+/* Taverne : la salle commune, chaque message aux couleurs de la guilde de son auteur. */
+.hall .messages { gap: 10px; max-height: 58vh; padding-right: 6px; }
+.message { display: flex; gap: 10px; align-items: flex-start; }
+.message p { margin: 0; }
+.message-sigil {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-size: 1.2rem;
+  background: color-mix(in srgb, var(--guild) 40%, rgb(0 0 0 / 0.5));
+  border: 1px solid var(--iron);
+}
+.message:not([data-guild]) .message-sigil { background: rgb(0 0 0 / 0.4); }
+.message-head { display: flex; gap: 8px; align-items: baseline; }
+.message-head strong { color: var(--guild-bright); }
+.message:not([data-guild]) .message-head strong { color: var(--parchment); }
+.message-head .muted { font-size: 0.8rem; }
+.message-body { color: var(--ink); }
+.message[data-mine] .message-body {
+  padding: 4px 10px;
+  background: color-mix(in srgb, var(--guild) 20%, transparent);
+  border-left: 2px solid var(--guild-bright);
+}
+.say { margin-top: 12px; max-width: none; }
+.hearth {
+  background:
+    radial-gradient(circle at 50% 110%, rgb(220 120 40 / 0.35), transparent 60%),
+    linear-gradient(180deg, var(--panel), var(--stone));
+}
+.hearth .presence li { display: flex; align-items: center; gap: 8px; color: var(--parchment); }
+.presence-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 6px var(--ok); }

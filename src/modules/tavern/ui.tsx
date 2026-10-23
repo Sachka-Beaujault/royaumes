@@ -1,6 +1,7 @@
 'use client'
 import { hc } from 'hono/client'
-import { type FormEvent, useCallback, useEffect, useState } from 'react'
+import { AnimatePresence, motion } from 'motion/react'
+import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { useChannel } from '@/platform/realtime/use-channel'
 import { Entity } from '@/ui/entity'
 import type { TavernApi } from './api'
@@ -105,6 +106,13 @@ export function TavernScreen({ userId }: { userId: string }) {
     }
   }, [])
 
+  // La salle défile jusqu'au dernier message à chaque nouveau message.
+  const hall = useRef<HTMLUListElement>(null)
+  const lastId = messages.at(-1)?.id
+  useEffect(() => {
+    if (lastId !== undefined) hall.current?.scrollTo({ top: hall.current.scrollHeight })
+  }, [lastId])
+
   // COMMANDE : publication d'un message.
   async function send(event: FormEvent) {
     event.preventDefault()
@@ -121,37 +129,59 @@ export function TavernScreen({ userId }: { userId: string }) {
 
   return (
     <>
-      <div className="row" style={{ justifyContent: 'space-between' }}>
-        <h1>
-          <Entity kind="tavern" /> Taverne
-        </h1>
+      <header className="page-header">
+        <div>
+          <p className="page-kicker">Au coin du feu</p>
+          <h1>
+            <Entity kind="tavern" /> Taverne
+          </h1>
+        </div>
         <span className="status" data-status={status}>
           {STATUS_LABELS[status]}
         </span>
-      </div>
+      </header>
 
       <div className="tavern">
-        <section className="panel" aria-label="Messages">
-          {messages.length === 0 && <p className="muted">Aucun message pour le moment.</p>}
-          <ul className="messages">
-            {messages.map((message) => (
-              <li key={message.id} data-mine={message.authorId === userId || undefined}>
-                <span className="muted">{timeOf(message.postedAt)}</span>{' '}
-                {message.authorGuild && <Entity kind={`guild-${message.authorGuild}`} />}{' '}
-                <strong>{message.authorName}</strong> {message.body}
-              </li>
-            ))}
+        <section className="panel hall" aria-label="Messages">
+          {messages.length === 0 && (
+            <p className="muted">La salle est calme. Lancez la conversation.</p>
+          )}
+          <ul className="messages" ref={hall}>
+            <AnimatePresence initial={false}>
+              {messages.map((message) => (
+                <motion.li
+                  key={message.id}
+                  className="message"
+                  data-guild={message.authorGuild ?? undefined}
+                  data-mine={message.authorId === userId || undefined}
+                  initial={{ opacity: 0, x: -12 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.25 }}
+                >
+                  <span className="message-sigil">
+                    {message.authorGuild && <Entity kind={`guild-${message.authorGuild}`} />}
+                  </span>
+                  <div>
+                    <p className="message-head">
+                      <strong>{message.authorName}</strong>
+                      <span className="muted">{timeOf(message.postedAt)}</span>
+                    </p>
+                    <p className="message-body">{message.body}</p>
+                  </div>
+                </motion.li>
+              ))}
+            </AnimatePresence>
           </ul>
-          <form className="row" onSubmit={send}>
+          <form className="row say" onSubmit={send}>
             <input
               aria-label="Votre message"
               value={draft}
               maxLength={MESSAGE_MAX_LENGTH * 2}
               onChange={(e) => setDraft(e.target.value)}
-              placeholder="Votre message"
+              placeholder="Levez votre chope et prenez la parole..."
               style={{ flex: 1 }}
             />
-            <button type="submit">Envoyer</button>
+            <button type="submit">Parler</button>
           </form>
           {error && (
             <p className="error" role="alert">
@@ -160,11 +190,17 @@ export function TavernScreen({ userId }: { userId: string }) {
           )}
         </section>
 
-        <section className="panel" aria-label="Joueurs présents">
-          <h2>Présents</h2>
+        <section className="panel hearth" aria-label="Joueurs présents">
+          <h2>Autour du feu</h2>
+          <p className="muted">
+            {players.length} {players.length > 1 ? 'voyageurs' : 'voyageur'}
+          </p>
           <ul className="presence">
             {players.map((player) => (
-              <li key={player.id}>{player.name}</li>
+              <li key={player.id}>
+                <span className="presence-dot" aria-hidden="true" />
+                {player.name}
+              </li>
             ))}
           </ul>
         </section>
