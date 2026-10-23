@@ -10,7 +10,7 @@ import {
   resolveRound,
   settle,
 } from './rift-rules'
-import { evolve, initialState, type RunEvent, type RunState } from './run'
+import { evolve, initialState, type RunState } from './run'
 
 const T0 = Date.UTC(2026, 9, 23, 12, 0)
 const DAY = '2026-10-23'
@@ -49,24 +49,22 @@ const started = play(lobby, { type: 'StartRun', playerId: 'alice' }).state
 const firstMonster = (state: RunState) => state.monsters.find((m) => m.hp > 0)?.id ?? ''
 
 describe('Faille - contenu du jour (règle 10)', () => {
-  it("ne dépend que de la graine du jour, de l'étage et du nombre de héros", () => {
-    expect(generateFloor(SEED, 3, 2)).toEqual(generateFloor(SEED, 3, 2))
+  it("ne dépend que de la graine du jour et de l'étage", () => {
+    expect(generateFloor(SEED, 3)).toEqual(generateFloor(SEED, 3))
     const floors = Array.from({ length: 8 }, (_, i) => i + 1)
-    const other = floors.map((floor) => generateFloor(SEED + 1, floor, 2))
-    expect(floors.map((floor) => generateFloor(SEED, floor, 2))).not.toEqual(other)
+    const other = floors.map((floor) => generateFloor(SEED + 1, floor))
+    expect(floors.map((floor) => generateFloor(SEED, floor))).not.toEqual(other)
   })
 
-  it("présente le même premier étage à deux guildes qui ouvrent l'expédition du jour", () => {
-    const red = play(play(initialState, open()).state, { type: 'StartRun', playerId: 'alice' })
-    const green = play(
-      play(initialState, { ...open(), playerId: 'dave', guild: 'green' } as RunCommand).state,
+  it('présente les mêmes monstres à toutes les guildes, quel que soit le nombre de leurs héros', () => {
+    // La Garde de l'Onde part seule ; l'Ordre du Dragon, à trois (Alice, Bob et Carol).
+    const solo = play(
+      play(initialState, { ...open(), playerId: 'dave', guild: 'blue' } as RunCommand).state,
       { type: 'StartRun', playerId: 'dave' },
-    )
-    const monstersOf = (events: RunEvent[]) =>
-      events.find((event) => event.type === 'FloorEntered')?.data
-    expect(monstersOf(green.events)).toMatchObject({
-      monsters: (monstersOf(red.events) as { monsters: unknown }).monsters,
-    })
+    ).state
+    expect(solo.heroes).toHaveLength(1)
+    expect(started.heroes).toHaveLength(3)
+    expect(solo.monsters).toEqual(started.monsters)
   })
 })
 
@@ -194,9 +192,9 @@ describe('Faille - manches simultanées (règle 13)', () => {
 
 describe('Faille - étages sans fin (règles 14 et 15)', () => {
   it('renforce les monstres à chaque étage', () => {
-    const floor1 = monsterAt('ghoul', 1, 1)
-    const floor2 = monsterAt('ghoul', 2, 1)
-    const floor9 = monsterAt('ghoul', 9, 1)
+    const floor1 = monsterAt('ghoul', 1)
+    const floor2 = monsterAt('ghoul', 2)
+    const floor9 = monsterAt('ghoul', 9)
     expect(floor2.hp).toBeGreaterThan(floor1.hp)
     expect(floor9.attack).toBeGreaterThan(floor1.attack)
   })
@@ -204,10 +202,10 @@ describe('Faille - étages sans fin (règles 14 et 15)', () => {
   it('fait garder un étage sur cinq par un boss, plus puissant à chaque apparition', () => {
     const floors = Array.from({ length: 15 }, (_, i) => i + 1)
     expect(floors.filter(isBossFloor)).toEqual([5, 10, 15])
-    expect(generateFloor(SEED, 5, 1)).toEqual([monsterAt(BOSS, 5, 1)])
-    expect(generateFloor(SEED, 4, 1).every((monster) => monster.kind !== BOSS)).toBe(true)
-    const first = monsterAt(BOSS, 5, 1)
-    const second = monsterAt(BOSS, 10, 1)
+    expect(generateFloor(SEED, 5)).toEqual([monsterAt(BOSS, 5)])
+    expect(generateFloor(SEED, 4).every((monster) => monster.kind !== BOSS)).toBe(true)
+    const first = monsterAt(BOSS, 5)
+    const second = monsterAt(BOSS, 10)
     expect(second.hp).toBeGreaterThan(first.hp)
     expect(second.attack).toBeGreaterThan(first.attack)
   })

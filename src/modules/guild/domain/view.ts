@@ -9,6 +9,10 @@ export interface MemberView {
   pendingTo: GuildId | null
   /** Or qui manquait au joueur lors de sa dernière demande refusée ; null sinon. */
   missing: Amounts | null
+  /** Vrai si la dernière demande a été annulée, et l'or remboursé, parce que le joueur a rejoint la Faille. */
+  refunded: boolean
+  /** Jour de la dernière participation du joueur à la Faille ; null s'il n'y a jamais participé. */
+  riftDay: string | null
 }
 
 export function toView(state: MemberState): MemberView {
@@ -16,5 +20,7 @@ export function toView(state: MemberState): MemberView {
     guild: state.guild,
     pendingTo: state.pending?.to ?? null,
     missing: state.lastCancel?.reason === 'refused' ? state.lastCancel.missing : null,
+    refunded: state.lastCancel?.reason === 'locked',
+    riftDay: state.rift?.day ?? null,
   }
 }

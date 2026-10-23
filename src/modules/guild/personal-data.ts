@@ -8,11 +8,19 @@ import { messages } from './infrastructure/schema'
 
 /** Étape de l'appartenance d'un joueur, telle qu'elle figure dans l'export. */
 interface MembershipStep {
-  kind: 'joined' | 'change-requested' | 'changed' | 'change-cancelled'
+  kind:
+    | 'joined'
+    | 'change-requested'
+    | 'changed'
+    | 'change-cancelled'
+    | 'rift-entered'
+    | 'rift-entry-cancelled'
   /** Guilde rejointe ou demandée ; absente d'une demande annulée. */
   guild?: string
   /** Motif d'une demande annulée. */
   reason?: string
+  /** Jour d'une participation à la Faille. */
+  day?: string
   at: number
 }
 
@@ -27,6 +35,10 @@ function stepOf(event: MemberEvent): MembershipStep {
       return { kind: 'changed', guild: event.data.to, at: event.data.at }
     case 'ChangeCancelled':
       return { kind: 'change-cancelled', reason: event.data.reason, at: event.data.at }
+    case 'RiftEntered':
+      return { kind: 'rift-entered', day: event.data.day, at: event.data.at }
+    case 'RiftEntryCancelled':
+      return { kind: 'rift-entry-cancelled', day: event.data.day, at: event.data.at }
   }
 }
 

@@ -38,14 +38,26 @@ describe('API du module Guilde', () => {
 
   it("présente un joueur sans guilde tant qu'il n'en a choisi aucune", async () => {
     const api = await createTestApi()
-    expect(await viewOf(api)).toEqual({ guild: null, pendingTo: null, missing: null })
+    expect(await viewOf(api)).toEqual({
+      guild: null,
+      pendingTo: null,
+      missing: null,
+      refunded: false,
+      riftDay: null,
+    })
   })
 
   it('enregistre le premier choix (201), gratuit, et refuse un second choix (409)', async () => {
     const api = await createTestApi()
     const res = await api.post('/api/guild/join', { guild: 'red' })
     expect(res.status).toBe(201)
-    expect((await res.json()).view).toEqual({ guild: 'red', pendingTo: null, missing: null })
+    expect((await res.json()).view).toEqual({
+      guild: 'red',
+      pendingTo: null,
+      missing: null,
+      refunded: false,
+      riftDay: null,
+    })
 
     const again = await api.post('/api/guild/join', { guild: 'blue' })
     expect(again.status).toBe(409)
@@ -66,7 +78,13 @@ describe('API du module Guilde', () => {
 
     const res = await api.post('/api/guild/change', { guild: 'green' })
     expect(res.status).toBe(200)
-    expect((await res.json()).view).toEqual({ guild: 'green', pendingTo: null, missing: null })
+    expect((await res.json()).view).toEqual({
+      guild: 'green',
+      pendingTo: null,
+      missing: null,
+      refunded: false,
+      riftDay: null,
+    })
     expect((await stockOf(api)).gold).toBe(10)
   })
 
@@ -80,6 +98,8 @@ describe('API du module Guilde', () => {
       guild: 'red',
       pendingTo: null,
       missing: { gold: 50 },
+      refunded: false,
+      riftDay: null,
     })
   })
 
@@ -107,7 +127,13 @@ describe('API du module Guilde', () => {
     await api.post('/api/guild/join', { guild: 'blue' })
 
     const res = await api.post('/api/guild/change', { guild: 'red' })
-    expect((await res.json()).view).toEqual({ guild: 'red', pendingTo: null, missing: null })
+    expect((await res.json()).view).toEqual({
+      guild: 'red',
+      pendingTo: null,
+      missing: null,
+      refunded: false,
+      riftDay: null,
+    })
     expect((await stockOf(api)).gold).toBe(10)
   })
 

@@ -30,11 +30,26 @@ export function requestsFor(state: MemberState, event: MemberEvent): SagaRequest
         },
       ]
 
-    // Premier choix, changement conclu, ou prélèvement refusé : rien n'est à prélever ni à
-    // compenser.
+    // Compensation : le changement est devenu impossible après le prélèvement, l'or est
+    // reversé au village du joueur. Un prélèvement refusé, lui, n'a rien à compenser.
+    case 'ChangeCancelled':
+      return event.data.reason === 'locked'
+        ? [
+            {
+              kind: 'deposit',
+              transferId: transferIdOf(state.playerId, `refund-${event.data.attempt}`),
+              playerId: state.playerId,
+              resources: CHANGE_COST,
+            },
+          ]
+        : []
+
+    // Premier choix, changement conclu, ou participation à la Faille : rien n'est à prélever
+    // ni à compenser.
     case 'GuildJoined':
     case 'GuildChanged':
-    case 'ChangeCancelled':
+    case 'RiftEntered':
+    case 'RiftEntryCancelled':
       return []
   }
 }

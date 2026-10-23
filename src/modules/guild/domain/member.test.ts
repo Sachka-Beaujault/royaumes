@@ -128,3 +128,78 @@ describe('Guilde - identifiants des mouvements', () => {
     expect(playerIdOf(transferIdOf('a:b', 'change-3'))).toBe('a:b')
   })
 })
+
+describe('Guilde - participation à la Faille (règles 4, 5, 6 et 16)', () => {
+  const NOON = Date.UTC(2026, 9, 23, 10, 0)
+  const TOMORROW = NOON + 24 * 60 * 60_000
+  const enter = (runId: string): MemberCommand => ({ type: 'EnterRift', runId })
+
+  it("refuse la Faille à un joueur qui n'a pas de guilde", () => {
+    expect(decide(initialState, enter('r1'), NOON)).toEqual({
+      ok: false,
+      error: { code: 'NOT_A_MEMBER' },
+    })
+  })
+
+  it("n'accepte qu'une participation par jour, et une nouvelle le lendemain", () => {
+    const entered = play(member, enter('r1'), NOON).state
+    expect(entered.rift).toEqual({ day: '2026-10-23', runId: 'r1' })
+    expect(decide(entered, enter('r2'), NOON + 60_000)).toEqual({
+      ok: false,
+      error: { code: 'ALREADY_ENTERED_TODAY' },
+    })
+    expect(decide(entered, enter('r2'), TOMORROW).ok).toBe(true)
+  })
+
+  it('compte la participation du jour même si le joueur change ensuite de guilde', () => {
+    // Alice change de guilde le matin, puis joue pour sa nouvelle guilde : elle ne peut pas
+    // rejouer pour l'ancienne, ni pour aucune autre, le même jour.
+    const moved = play(pending, result('guild-alice:change-1', 'withdrawn'), NOON).state
+    const entered = play(moved, enter('r1'), NOON).state
+    expect(entered.guild).toBe('blue')
+    expect(decide(entered, enter('r2'), NOON).ok).toBe(false)
+  })
+
+  it("fige la guilde jusqu'au lendemain une fois la Faille rejointe", () => {
+    const entered = play(member, enter('r1'), NOON).state
+    expect(decide(entered, toBlue, NOON)).toEqual({ ok: false, error: { code: 'GUILD_LOCKED' } })
+    expect(decide(entered, toBlue, TOMORROW).ok).toBe(true)
+  })
+
+  it('rend la participation si l’inscription à l’expédition a échoué', () => {
+    const entered = play(member, enter('r1'), NOON).state
+    const cancelled = play(entered, { type: 'CancelRiftEntry', runId: 'r1' }, NOON).state
+    expect(cancelled.rift).toBeNull()
+    expect(decide(cancelled, enter('r2'), NOON).ok).toBe(true)
+    // L'annulation d'une autre participation que celle en cours est sans effet.
+    expect(decide(entered, { type: 'CancelRiftEntry', runId: 'r9' }, NOON)).toEqual({
+      ok: true,
+      events: [],
+    })
+  })
+
+  it("annule un changement en attente si le joueur rejoint la Faille, et rembourse l'or", () => {
+    const entered = play(pending, enter('r1'), NOON).state
+    const { state, requests } = play(entered, result('guild-alice:change-1', 'withdrawn'), NOON)
+    expect(state).toMatchObject({
+      guild: 'red',
+      pending: null,
+      lastCancel: { reason: 'locked' },
+    })
+    expect(requests).toEqual([
+      {
+        kind: 'deposit',
+        transferId: 'guild-alice:refund-1',
+        playerId: 'alice',
+        resources: CHANGE_COST,
+      },
+    ])
+  })
+
+  it("n'a rien à rembourser si le Village a refusé le prélèvement", () => {
+    const entered = play(pending, enter('r1'), NOON).state
+    const { state, requests } = play(entered, result('guild-alice:change-1', 'refused'), NOON)
+    expect(state.lastCancel?.reason).toBe('refused')
+    expect(requests).toEqual([])
+  })
+})

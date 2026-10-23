@@ -8,6 +8,7 @@ import type { GuildApi } from './api'
 import {
   CHANGE_COST,
   type ChatError,
+  dayOf,
   GUILD_INFO,
   GUILDS,
   type GuildId,
@@ -31,6 +32,8 @@ const ERRORS: Record<ApiError['code'], string> = {
   NOT_A_MEMBER: "Choisissez d'abord une guilde.",
   SAME_GUILD: 'Vous appartenez déjà à cette guilde.',
   CHANGE_PENDING: 'Un changement de guilde est déjà en cours.',
+  GUILD_LOCKED: "Vous avez rejoint la Faille aujourd'hui : votre guilde est figée jusqu'à demain.",
+  ALREADY_ENTERED_TODAY: "Vous avez déjà rejoint la Faille aujourd'hui.",
 }
 
 /** Délai entre deux relectures de la vue tant qu'un changement attend la réponse du Village. */
@@ -242,6 +245,7 @@ export function GuildScreen({ userId }: { userId: string }) {
 
   // Membre d'une guilde : sa guilde, sa demande en cours, et le changement payant.
   const current = view.guild
+  const locked = view.riftDay === dayOf(Date.now())
   return (
     <>
       {title}
@@ -253,6 +257,12 @@ export function GuildScreen({ userId }: { userId: string }) {
           <p className="muted">
             Changement vers <GuildName guild={view.pendingTo} /> en cours : le paiement est demandé
             à votre village...
+          </p>
+        )}
+        {view.refunded && (
+          <p className="muted">
+            Changement annulé : vous avez rejoint la Faille pendant la demande. Votre or vous a été
+            remboursé.
           </p>
         )}
         {view.missing && (
@@ -268,10 +278,19 @@ export function GuildScreen({ userId }: { userId: string }) {
           Changer de guilde coûte <Entity kind="gold" /> {CHANGE_COST.gold}, prélevées dans votre
           village.
         </p>
+        {locked && (
+          <p className="muted">
+            Vous avez rejoint la Faille aujourd'hui : votre guilde est figée jusqu'à demain.
+          </p>
+        )}
         {GUILDS.filter((guild) => guild !== current).map((guild) => (
           <div key={guild} className="row" style={{ justifyContent: 'space-between' }}>
             <GuildName guild={guild} />
-            <button type="button" disabled={!!view.pendingTo} onClick={() => change(guild)}>
+            <button
+              type="button"
+              disabled={!!view.pendingTo || locked}
+              onClick={() => change(guild)}
+            >
               Rejoindre
             </button>
           </div>

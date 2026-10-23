@@ -1,8 +1,10 @@
 /**
  * Domaine de la Guilde : l'appartenance d'un joueur à une guilde, selon le modèle decider.
- * L'état d'un membre résume aussi l'avancement de la saga de changement de guilde.
+ * L'état d'un membre résume aussi l'avancement de la saga de changement de guilde, et sa
+ * participation du jour à la Faille, qui fige sa guilde jusqu'au lendemain.
  * Ce fichier est écrit en TypeScript pur : il n'importe aucun autre module.
  */
+import { dayOf } from './calendar'
 import type { GuildId } from './catalog'
 
 /** Quantités de ressources d'un mouvement, par nom de ressource (« gold »...). */
@@ -18,13 +20,24 @@ export interface MemberState {
   playerId: string
   /** Guilde actuelle ; null tant qu'aucune n'a été choisie. */
   guild: GuildId | null
-  /** Changement en attente de la réponse du Village, s'il y en a un. */
-  pending: { attempt: number; to: GuildId } | null
+  /**
+   * Changement en attente de la réponse du Village, s'il y en a un. locked indique que le
+   * joueur a rejoint la Faille pendant l'attente : le changement est devenu impossible.
+   */
+  pending: { attempt: number; to: GuildId; locked: boolean } | null
   /** Numéro de la dernière demande de changement : chaque demande a son propre mouvement. */
   attempt: number
   /** Dernière demande annulée, et son motif, présentés au joueur. */
-  lastCancel: { reason: 'refused'; missing: Amounts } | null
+  lastCancel: { reason: CancelReason; missing: Amounts } | null
+  /** Participation à la Faille : le jour et l'expédition rejointe ; null si aucune. */
+  rift: { day: string; runId: string } | null
 }
+
+/**
+ * Motif de l'annulation d'un changement : le village n'a pas pu payer, ou le joueur a rejoint
+ * la Faille pendant l'attente, et l'or prélevé lui est remboursé.
+ */
+export type CancelReason = 'refused' | 'locked'
 
 export const initialState: MemberState = {
   exists: false,
@@ -33,6 +46,7 @@ export const initialState: MemberState = {
   pending: null,
   attempt: 0,
   lastCancel: null,
+  rift: null,
 }
 
 // ---------------------------------------------------------------------------
@@ -48,8 +62,10 @@ export type MemberEvent =
   | { type: 'GuildChanged'; data: { attempt: number; from: GuildId; to: GuildId; at: number } }
   | {
       type: 'ChangeCancelled'
-      data: { attempt: number; reason: 'refused'; missing: Amounts; at: number }
+      data: { attempt: number; reason: CancelReason; missing: Amounts; at: number }
     }
+  | { type: 'RiftEntered'; data: { day: string; runId: string; at: number } }
+  | { type: 'RiftEntryCancelled'; data: { day: string; runId: string; at: number } }
 
 // ---------------------------------------------------------------------------
 // Commandes
@@ -59,6 +75,10 @@ export type MemberCommand =
   // Commandes des joueurs.
   | { type: 'JoinGuild'; playerId: string; guild: GuildId }
   | { type: 'RequestChange'; playerId: string; guild: GuildId }
+  // Commandes de la Faille : la participation du jour, et son annulation si l'inscription à
+  // l'expédition échoue.
+  | { type: 'EnterRift'; runId: string }
+  | { type: 'CancelRiftEntry'; runId: string }
   // Commande de la saga, issue des messages de la boîte d'envoi.
   | {
       type: 'RecordTransferResult'
@@ -72,6 +92,8 @@ export type MemberError =
   | { code: 'NOT_A_MEMBER' }
   | { code: 'SAME_GUILD' }
   | { code: 'CHANGE_PENDING' }
+  | { code: 'GUILD_LOCKED' }
+  | { code: 'ALREADY_ENTERED_TODAY' }
 
 export type Decision = { ok: true; events: MemberEvent[] } | { ok: false; error: MemberError }
 
@@ -109,7 +131,7 @@ export function evolve(state: MemberState, event: MemberEvent): MemberState {
     case 'ChangeRequested':
       return {
         ...state,
-        pending: { attempt: event.data.attempt, to: event.data.to },
+        pending: { attempt: event.data.attempt, to: event.data.to, locked: false },
         attempt: event.data.attempt,
         lastCancel: null,
       }
@@ -121,6 +143,16 @@ export function evolve(state: MemberState, event: MemberEvent): MemberState {
         pending: null,
         lastCancel: { reason: event.data.reason, missing: event.data.missing },
       }
+    case 'RiftEntered':
+      return {
+        ...state,
+        rift: { day: event.data.day, runId: event.data.runId },
+        pending: state.pending && { ...state.pending, locked: true },
+      }
+    case 'RiftEntryCancelled':
+      // Seule la participation annulée est retirée ; le changement reste impossible, la
+      // participation ayant eu lieu pendant l'attente.
+      return state.rift?.runId === event.data.runId ? { ...state, rift: null } : state
   }
 }
 
@@ -142,13 +174,29 @@ export function decide(state: MemberState, command: MemberCommand, now: number):
 
   if (!state.exists || !state.guild) return fail({ code: 'NOT_A_MEMBER' })
 
+  const today = dayOf(now)
   switch (command.type) {
     case 'RequestChange':
       if (command.guild === state.guild) return fail({ code: 'SAME_GUILD' })
       if (state.pending) return fail({ code: 'CHANGE_PENDING' })
+      // Le joueur a déjà rejoint la Faille aujourd'hui : sa guilde est figée jusqu'au lendemain.
+      if (state.rift?.day === today) return fail({ code: 'GUILD_LOCKED' })
       return accept({
         type: 'ChangeRequested',
         data: { attempt: state.attempt + 1, from: state.guild, to: command.guild, at: now },
+      })
+
+    case 'EnterRift':
+      // Une seule participation par jour, quelle que soit la guilde (règle 16).
+      if (state.rift?.day === today) return fail({ code: 'ALREADY_ENTERED_TODAY' })
+      return accept({ type: 'RiftEntered', data: { day: today, runId: command.runId, at: now } })
+
+    case 'CancelRiftEntry':
+      // Annulation d'une participation qui n'est plus la participation en cours : sans effet.
+      if (state.rift?.runId !== command.runId) return accept()
+      return accept({
+        type: 'RiftEntryCancelled',
+        data: { day: state.rift.day, runId: command.runId, at: now },
       })
 
     case 'RecordTransferResult':
@@ -175,6 +223,14 @@ function recordTransferResult(
     return accept({
       type: 'ChangeCancelled',
       data: { attempt: pending.attempt, reason: 'refused', missing: result.missing ?? {}, at: now },
+    })
+  }
+  // Le joueur a rejoint la Faille pendant l'attente : le changement est annulé, et l'or prélevé
+  // lui est remboursé par l'étape de compensation de la saga (règle 5).
+  if (pending.locked) {
+    return accept({
+      type: 'ChangeCancelled',
+      data: { attempt: pending.attempt, reason: 'locked', missing: {}, at: now },
     })
   }
   return accept({

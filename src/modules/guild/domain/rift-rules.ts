@@ -3,8 +3,8 @@
  *   decide(état, commande, maintenant) -> événements ou erreur métier
  * Tout le hasard est tiré ici, à partir de la graine du jour, et enregistré dans les
  * événements : evolve (run.ts) ne fait qu'appliquer les résultats. Le contenu d'un étage ne
- * dépend que de la graine du jour, du numéro de l'étage et du nombre de héros : à effectif
- * égal, toutes les guildes affrontent la même Faille (règle 10).
+ * dépend que de la graine du jour et du numéro de l'étage : toutes les guildes affrontent la
+ * même Faille, quel que soit le nombre de leurs héros (règle 10).
  */
 import type { GuildId } from './catalog'
 import { mix, pick, type Random, randomInt, seeded } from './random'
@@ -18,7 +18,6 @@ import {
   HEAL_AMOUNT,
   MAX_HEROES,
   MAX_MONSTERS,
-  PARTY_HP_FACTOR,
   REST_HEAL,
   RIFT_MONSTERS,
   type RiftMonsterKind,
@@ -90,16 +89,15 @@ export const isBossFloor = (floor: number) => floor % BOSS_EVERY === 0
 
 /**
  * Caractéristiques d'un monstre à un étage : ses points de vie et son attaque croissent avec
- * l'étage, ses points de vie avec le nombre de héros, et ceux du boss à chaque apparition.
+ * l'étage, et les points de vie du boss à chacune de ses apparitions.
  */
-export function monsterAt(kind: RiftMonsterKind, floor: number, heroCount: number): MonsterSpec {
+export function monsterAt(kind: RiftMonsterKind, floor: number): MonsterSpec {
   const base = RIFT_MONSTERS[kind]
   const growth = 1 + FLOOR_GROWTH.hp * (floor - 1)
-  const party = 1 + PARTY_HP_FACTOR * (heroCount - 1)
   const appearance = kind === BOSS ? 1 + BOSS_GROWTH * (floor / BOSS_EVERY - 1) : 1
   return {
     kind,
-    hp: Math.round(base.hp * growth * party * appearance),
+    hp: Math.round(base.hp * growth * appearance),
     attack: base.attack + Math.floor(FLOOR_GROWTH.attack * (floor - 1)),
   }
 }
@@ -108,13 +106,11 @@ export function monsterAt(kind: RiftMonsterKind, floor: number, heroCount: numbe
  * Tire les monstres d'un étage. La graine dérivée mix(seed, 2, floor) ne sert qu'à cet étage :
  * le même étage est obtenu pour la même graine du jour, quelle que soit l'expédition.
  */
-export function generateFloor(seed: number, floor: number, heroCount: number): MonsterSpec[] {
-  if (isBossFloor(floor)) return [monsterAt(BOSS, floor, heroCount)]
+export function generateFloor(seed: number, floor: number): MonsterSpec[] {
+  if (isBossFloor(floor)) return [monsterAt(BOSS, floor)]
   const random = seeded(mix(seed, 2, floor))
   const count = randomInt(random, 1, MAX_MONSTERS)
-  return Array.from({ length: count }, () =>
-    monsterAt(pick(random, COMMON_MONSTERS), floor, heroCount),
-  )
+  return Array.from({ length: count }, () => monsterAt(pick(random, COMMON_MONSTERS), floor))
 }
 
 /** Entrée à l'étage suivant, à l'instant at : ses monstres sont enregistrés dans l'événement. */
@@ -123,7 +119,7 @@ function enterFloor(state: RunState, floor: number, at: number): RunEvent {
     type: 'FloorEntered',
     data: {
       floor,
-      monsters: generateFloor(state.seed, floor, state.heroes.length),
+      monsters: generateFloor(state.seed, floor),
       rest: floor === 1 ? 0 : REST_HEAL,
       deadline: at + ROUND_MS,
       at,

@@ -66,9 +66,3 @@ export const FLOOR_GROWTH = { hp: 0.15, attack: 0.5 }
 
 /** Renforcement supplémentaire du boss à chacune de ses apparitions : 25 % de points de vie. */
 export const BOSS_GROWTH = 0.25
-
-/**
- * Points de vie des monstres selon le nombre de héros : une fois et demie pour deux héros,
- * deux fois pour trois, deux fois et demie pour quatre.
- */
-export const PARTY_HP_FACTOR = 0.5

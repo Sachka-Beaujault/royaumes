@@ -7,6 +7,8 @@ import { z } from 'zod'
 import { GUILDS, type GuildId } from './domain/catalog'
 import { MESSAGE_MAX_LENGTH } from './domain/chat'
 
+export type { DayKey } from './domain/calendar'
+export { dayOf, PREVIEW_DAYS, riftCalendar } from './domain/calendar'
 export type { GuildId } from './domain/catalog'
 export { CHANGE_COST, GUILD_INFO, GUILDS } from './domain/catalog'
 export type { ChatError } from './domain/chat'

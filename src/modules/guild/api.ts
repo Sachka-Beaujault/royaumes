@@ -16,6 +16,8 @@ const STATUS: Record<MemberError['code'], 409> = {
   NOT_A_MEMBER: 409,
   SAME_GUILD: 409,
   CHANGE_PENDING: 409,
+  GUILD_LOCKED: 409,
+  ALREADY_ENTERED_TODAY: 409,
 }
 
 /** Code HTTP associé à chaque erreur du chat. */
