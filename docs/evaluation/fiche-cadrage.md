@@ -31,9 +31,11 @@ Appartenance
 3. Changer de guilde coûte 50 pièces d'or, prélevées dans le village du joueur ; si le
    village ne peut pas les fournir, la demande est annulée et le joueur reste dans sa guilde.
 4. Une demande de changement est refusée vers la guilde actuelle, lorsqu'une autre demande
-   est déjà en attente, ou lorsque le joueur participe à une expédition de la Faille en cours.
-5. Si le changement devient impossible après le prélèvement de l'or, parce que le joueur a
-   entre-temps rejoint une expédition, l'or lui est remboursé et il reste dans sa guilde.
+   est déjà en attente, ou lorsque le joueur a déjà rejoint une expédition de la Faille dans
+   la journée : sa guilde est alors figée jusqu'au lendemain.
+5. Si le joueur rejoint une expédition alors que sa demande est en attente, le changement
+   devient impossible : à la réception de l'or prélevé, celui-ci lui est remboursé, et il
+   reste dans sa guilde.
 6. Un joueur sans guilde ne peut ni utiliser un chat de guilde, ni ouvrir ou rejoindre une
    expédition de la Faille.
 
@@ -49,8 +51,8 @@ La Faille
 9. Le nom de la Faille d'un jour ne dépend que de la date : il est le même pour tous les
    joueurs, et les noms des sept jours suivants sont annoncés à l'avance.
 10. Le contenu de la Faille d'un jour, monstres et boss compris, ne dépend que d'une graine
-    secrète propre à ce jour : il est le même pour toutes les guildes, et il n'est pas
-    révélé à l'avance.
+    secrète propre à ce jour, tirée lors de la première expédition de la journée : il est le
+    même pour toutes les guildes, et il n'est pas révélé à l'avance.
 11. Une expédition réunit de 1 à 4 joueurs de la même guilde ; chacun choisit son rôle, tank,
     soigneur ou attaquant, avant le départ.
 12. Le tank est la cible prioritaire des monstres et subit des dégâts réduits ; le soigneur
@@ -81,7 +83,7 @@ Taverne
 | Demander un changement de guilde | Commande `RequestChange` | `POST /api/guild/change` |
 | Lire le chat de sa guilde | Lecture | `GET /api/guild/chat` |
 | Publier dans le chat de sa guilde | Commande | `POST /api/guild/chat` |
-| Consulter la Faille du jour et les noms des jours suivants | Lecture | `GET /api/guild/rift` |
+| Consulter la Faille du jour, les noms des jours suivants et les expéditions ouvertes de sa guilde | Lecture | `GET /api/guild/rift` |
 | Ouvrir une expédition, en choisissant son rôle | Commande `OpenRun` | `POST /api/guild/rift/runs` |
 | Consulter une expédition | Lecture | `GET /api/guild/rift/runs/:id` |
 | Rejoindre une expédition, en choisissant son rôle | Commande `JoinRun` | `POST /api/guild/rift/runs/:id/join` |
