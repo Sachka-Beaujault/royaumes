@@ -1,5 +1,6 @@
 'use client'
 import { hc } from 'hono/client'
+import { AnimatePresence, motion } from 'motion/react'
 import { useCallback, useEffect, useState } from 'react'
 import { useChannel } from '@/platform/realtime/use-channel'
 import { Entity } from '@/ui/entity'
@@ -7,7 +8,9 @@ import type { RealmApi } from './api'
 import {
   BUILDINGS,
   type Building,
+  CATALOG,
   type DomainError,
+  MAX_LEVEL,
   RESOURCES,
   type Stock,
   stockAt,
@@ -34,6 +37,9 @@ const ERRORS: Record<ApiError['code'], string> = {
 function canAfford(stock: Stock, cost: Partial<Stock> | null) {
   return !!cost && Object.entries(cost).every(([r, n]) => stock[r as keyof Stock] >= (n ?? 0))
 }
+
+/** Niveaux d'un bâtiment, de 1 au niveau maximal : un cran de la jauge par niveau. */
+const LEVELS = Array.from({ length: MAX_LEVEL }, (_, index) => index + 1)
 
 /** Libellé affiché pour chaque état de la connexion temps réel. */
 const STATUS_LABELS = {
@@ -87,39 +93,71 @@ export function VillageScreen({ userId }: { userId: string }) {
     }
   }
 
-  const title = (
-    <div className="row" style={{ justifyContent: 'space-between' }}>
-      <h1>
-        <Entity kind="village" /> {view?.name ?? 'Royaumes'}
-      </h1>
-      <span className="status" data-status={status}>
-        {STATUS_LABELS[status]}
-      </span>
-    </div>
-  )
+  // Fondation : le sceau s'imprime sur la charte, puis le village apparaît.
+  const [sealing, setSealing] = useState(false)
+  async function seal(name: string) {
+    setSealing(true)
+    await new Promise((resolve) => setTimeout(resolve, 900))
+    await found(name)
+    setSealing(false)
+  }
 
   // Chargement en cours.
-  if (view === undefined) return title
+  if (view === undefined) return null
 
-  // Aucun village : formulaire de fondation.
+  // Aucun village : la charte de fondation.
   if (view === null) {
     return (
-      <>
-        {title}
-        <div className="panel">
-          <form
-            onSubmit={(e) => {
-              e.preventDefault()
-              found(String(new FormData(e.currentTarget).get('name')))
-            }}
-          >
-            <label htmlFor="name">Nommez votre village</label>
-            <input id="name" name="name" required minLength={2} maxLength={30} />
-            <button type="submit">Fonder</button>
-            {error && <p className="error">{error}</p>}
-          </form>
-        </div>
-      </>
+      <motion.section
+        className="charter"
+        aria-label="Fondation du village"
+        initial={{ opacity: 0, scale: 0.96, rotate: -0.6 }}
+        animate={{ opacity: 1, scale: 1, rotate: 0 }}
+        transition={{ duration: 0.6, ease: 'easeOut' }}
+      >
+        <p className="charter-kicker">Charte de fondation</p>
+        <h1>Un domaine vous est confié</h1>
+        <p>
+          Par la présente, le royaume vous concède une terre, une scierie, une carrière, cent
+          mesures de bois et cinquante de pierre. Donnez un nom à votre village : il sera inscrit au
+          registre du royaume.
+        </p>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            seal(String(new FormData(e.currentTarget).get('name')))
+          }}
+        >
+          <label htmlFor="name">
+            <Entity kind="quill" /> Nom du village
+          </label>
+          <input
+            id="name"
+            name="name"
+            required
+            minLength={2}
+            maxLength={30}
+            placeholder="Peyredragon, Vivesaigues..."
+            autoComplete="off"
+          />
+          <button type="submit" className="seal-button" disabled={sealing}>
+            <Entity kind="seal" /> Sceller la charte
+          </button>
+          {error && <p className="error">{error}</p>}
+        </form>
+        <AnimatePresence>
+          {sealing && (
+            <motion.div
+              className="charter-seal"
+              initial={{ scale: 3, opacity: 0, rotate: -30 }}
+              animate={{ scale: 1, opacity: 1, rotate: -8 }}
+              transition={{ type: 'spring', stiffness: 260, damping: 14 }}
+            >
+              <Entity kind="seal" />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.section>
     )
   }
 
@@ -127,39 +165,94 @@ export function VillageScreen({ userId }: { userId: string }) {
   const stock = stockAt(view, now)
   return (
     <>
-      {title}
-      <section className="panel stock" aria-label="Ressources">
-        {RESOURCES.map((r) => (
-          <div key={r}>
-            <Entity kind={r} /> {Math.floor(stock[r])}
-            <small>+{view.ratesPerMinute[r]} / min</small>
-          </div>
+      <header className="page-header">
+        <div>
+          <p className="page-kicker">Votre domaine</p>
+          <h1>
+            <Entity kind="village" /> {view.name}
+          </h1>
+        </div>
+        <span className="status" data-status={status}>
+          {STATUS_LABELS[status]}
+        </span>
+      </header>
+
+      <section className="coffers" aria-label="Ressources">
+        {RESOURCES.map((r, index) => (
+          <motion.div
+            key={r}
+            className="coffer"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.08 }}
+          >
+            <Entity kind={r} />
+            <strong>{Math.floor(stock[r])}</strong>
+            <Entity kind={r} showLabel />
+            <small>+{view.ratesPerMinute[r]} par minute</small>
+          </motion.div>
         ))}
       </section>
-      <section className="panel buildings" aria-label="Bâtiments">
-        {BUILDINGS.map((b) => {
+
+      <h2 className="section-title">Ateliers</h2>
+      <section className="workshops" aria-label="Bâtiments">
+        {BUILDINGS.map((b, index) => {
           const cost = view.nextCosts[b]
+          const level = view.levels[b]
           return (
-            <div key={b} className="building">
-              <span>
-                <Entity kind={b} showLabel /> <span className="muted">niveau {view.levels[b]}</span>
-              </span>
-              <span className="row">
-                {cost &&
-                  Object.entries(cost).map(([r, n]) => (
-                    <span key={r} className="muted">
-                      <Entity kind={r} /> {n}
-                    </span>
-                  ))}
-                <button type="button" disabled={!canAfford(stock, cost)} onClick={() => upgrade(b)}>
-                  {view.levels[b] === 0 ? 'Construire' : 'Améliorer'}
-                </button>
-              </span>
-            </div>
+            <motion.article
+              key={b}
+              className="workshop"
+              data-built={level > 0}
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15 + index * 0.08 }}
+            >
+              <div className="workshop-icon">
+                <Entity kind={b} />
+              </div>
+              <h3>
+                <Entity kind={b} showLabel />
+              </h3>
+              <p className="muted">
+                {level === 0 ? 'Non construit' : `Niveau ${level}`} · produit{' '}
+                <Entity kind={CATALOG[b].produces} showLabel />
+              </p>
+              {/* Jauge du niveau : un cran par niveau, jusqu'au niveau maximal. */}
+              <div
+                className="level-pips"
+                role="img"
+                aria-label={`Niveau ${level} sur ${MAX_LEVEL}`}
+              >
+                {LEVELS.map((pip) => (
+                  <span key={pip} data-on={pip <= level} />
+                ))}
+              </div>
+              {cost ? (
+                <>
+                  <p className="workshop-cost">
+                    {Object.entries(cost).map(([r, n]) => (
+                      <span key={r} data-short={stock[r as keyof Stock] < (n ?? 0)}>
+                        <Entity kind={r} /> {n}
+                      </span>
+                    ))}
+                  </p>
+                  <button
+                    type="button"
+                    disabled={!canAfford(stock, cost)}
+                    onClick={() => upgrade(b)}
+                  >
+                    {level === 0 ? 'Construire' : 'Améliorer'}
+                  </button>
+                </>
+              ) : (
+                <p className="ok">Niveau maximal atteint</p>
+              )}
+            </motion.article>
           )
         })}
-        {error && <p className="error">{error}</p>}
       </section>
+      {error && <p className="error">{error}</p>}
     </>
   )
 }

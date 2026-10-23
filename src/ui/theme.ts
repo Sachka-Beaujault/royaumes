@@ -26,6 +26,7 @@ import {
   GiMineWagon,
   GiOak,
   GiPortal,
+  GiQuillInk,
   GiScales,
   GiShamblingZombie,
   GiSkeleton,
@@ -36,6 +37,7 @@ import {
   GiTwoCoins,
   GiVisoredHelm,
   GiWaveCrest,
+  GiWaxSeal,
   GiWoodenDoor,
   GiWoodPile,
 } from 'react-icons/gi'
@@ -77,6 +79,8 @@ export const theme: Record<string, Look> = {
   ghoul: { icon: GiShamblingZombie, label: 'Goule' },
   golem: { icon: GiGolemHead, label: 'Golem' },
   warden: { icon: GiBlackKnightHelm, label: 'Gardien de la Faille' },
+  seal: { icon: GiWaxSeal, label: 'Sceau' },
+  quill: { icon: GiQuillInk, label: 'Plume' },
 }
 
 /** Apparence d'une entité ; une apparence neutre si l'entité n'est pas décrite. */

@@ -215,6 +215,7 @@ label { font-family: var(--font-display), serif; font-size: 0.8rem; letter-spaci
   background: linear-gradient(180deg, #070605, var(--stone));
   border-bottom: 2px solid var(--guild);
   box-shadow: 0 8px 22px rgb(0 0 0 / 0.55);
+  overflow: hidden;
 }
 .shell-top {
   display: flex;
@@ -253,7 +254,10 @@ label { font-family: var(--font-display), serif; font-size: 0.8rem; letter-spaci
 .shell-actions a[aria-current='page'] { color: var(--parchment); }
 
 .nav {
+  /* Conteneur des libellés masqués (.sr-only) de ses liens, qui sinon déborderaient de la page. */
+  position: relative;
   display: flex;
+  max-width: 100%;
   gap: 4px;
   padding: 0 8px;
   overflow-x: auto;
@@ -453,3 +457,116 @@ input.amount { width: 5em; }
 }
 .oath-text strong { font-size: 2.2rem; letter-spacing: 0.08em; }
 .oath-motto { margin: 0; font-size: 1.3rem; font-style: italic; color: var(--parchment); }
+
+/* En-tête des pages : un sur-titre, le titre, et l'état du temps réel. */
+.page-header { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+.page-kicker,
+.charter-kicker {
+  margin: 0;
+  font-family: var(--font-display), serif;
+  font-size: 0.72rem;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--guild-bright);
+}
+.section-title { margin: 28px 0 0; font-size: 0.9rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); }
+
+/* Fondation du village : une charte de parchemin, scellée à la cire de la guilde. */
+.charter {
+  position: relative;
+  max-width: 560px;
+  margin: 24px auto 0;
+  padding: 36px 40px 40px;
+  color: #3a2a18;
+  background:
+    radial-gradient(ellipse at 20% 10%, rgb(255 255 255 / 0.35), transparent 50%),
+    radial-gradient(ellipse at 80% 90%, rgb(120 80 30 / 0.25), transparent 55%),
+    linear-gradient(180deg, #eadbb7, #d8c393);
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px #b39a68, 0 24px 50px rgb(0 0 0 / 0.6), inset 0 0 60px rgb(120 80 30 / 0.35);
+}
+.charter h1 { color: #2a1d10; text-shadow: none; font-size: 1.7rem; }
+.charter .charter-kicker { color: #8a5a2b; }
+.charter form { max-width: none; margin-top: 18px; }
+.charter label { color: #6b4e2c; display: inline-flex; gap: 6px; align-items: center; }
+.charter label .entity-icon { color: #6b4e2c; }
+.charter input {
+  font-size: 1.3rem;
+  font-style: italic;
+  color: #2a1d10;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid #8a6f44;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 6px 2px;
+}
+.charter input::placeholder { color: #9c8460; }
+.charter .error { color: #8f2a1e; }
+.seal-button { justify-self: start; }
+.charter-seal {
+  position: absolute;
+  right: 36px;
+  bottom: 28px;
+  width: 92px;
+  height: 92px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-size: 3rem;
+  background: radial-gradient(circle at 35% 30%, var(--guild-bright), var(--guild) 55%, var(--guild-deep));
+  box-shadow: 0 4px 10px rgb(0 0 0 / 0.45), inset 0 -4px 8px rgb(0 0 0 / 0.35);
+}
+.charter-seal .entity-icon { color: rgb(255 240 220 / 0.85) !important; }
+
+/* Village : les coffres des ressources, puis les ateliers. */
+.coffers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 18px; }
+.coffer {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 16px 10px 14px;
+  text-align: center;
+  background: linear-gradient(180deg, var(--panel), var(--stone));
+  border: 1px solid var(--panel-edge);
+  border-top: 3px solid var(--gold-dim);
+  box-shadow: 0 10px 22px rgb(0 0 0 / 0.4);
+}
+.coffer > .entity:first-child { font-size: 2rem; }
+.coffer strong { font-family: var(--font-display), serif; font-size: 1.7rem; color: var(--parchment); font-variant-numeric: tabular-nums; }
+.coffer > .entity:nth-child(3) .entity-icon { display: none; }
+.coffer > .entity:nth-child(3) { font-family: var(--font-display), serif; font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+.coffer small { color: var(--ok); font-size: 0.85rem; }
+
+.workshops { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 12px; }
+@media (max-width: 720px) { .coffers, .workshops { grid-template-columns: 1fr; } }
+.workshop {
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 8px;
+  padding: 20px 16px;
+  text-align: center;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--panel) 90%, var(--guild)), var(--stone));
+  border: 1px solid var(--panel-edge);
+  box-shadow: 0 12px 26px rgb(0 0 0 / 0.45);
+}
+.workshop[data-built='false'] { filter: saturate(0.4); }
+.workshop h3 { margin: 0; color: var(--parchment); font-size: 1rem; }
+.workshop h3 .entity-icon { display: none; }
+.workshop p { margin: 0; }
+.workshop-icon {
+  width: 72px;
+  height: 72px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-size: 2.4rem;
+  border: 2px solid var(--gold-dim);
+  background: radial-gradient(circle, color-mix(in srgb, var(--guild) 40%, transparent), rgb(0 0 0 / 0.5));
+}
+.level-pips { display: flex; gap: 3px; }
+.level-pips span { width: 12px; height: 6px; background: var(--iron); transform: skewX(-20deg); }
+.level-pips span[data-on='true'] { background: var(--guild-bright); box-shadow: 0 0 6px color-mix(in srgb, var(--guild-bright) 60%, transparent); }
+.workshop-cost { display: flex; gap: 12px; justify-content: center; color: var(--parchment); }
+.workshop-cost span[data-short='true'] { color: var(--warn); }
