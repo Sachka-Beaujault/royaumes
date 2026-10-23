@@ -751,3 +751,41 @@ input.amount { width: 5em; }
 .run-end strong { font-family: var(--font-display), serif; font-size: 4rem; line-height: 1; color: var(--parchment); }
 .chronicle .log li[data-kind='damage'] { color: #d98b75; }
 .chronicle .log li[data-kind='heal'] { color: var(--ok); }
+
+/* Donjon : le choix du niveau, le couloir des salles et la salle courante. */
+.difficulties { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin: 16px 0 14px; }
+@media (max-width: 560px) { .difficulties { grid-template-columns: 1fr; } }
+button.difficulty {
+  display: grid;
+  gap: 4px;
+  justify-items: start;
+  padding: 14px 16px;
+  text-align: left;
+  text-transform: none;
+  letter-spacing: normal;
+  font-family: var(--font-body), serif;
+  font-size: 1rem;
+  font-weight: 400;
+  background: linear-gradient(180deg, var(--panel), var(--stone));
+  border: 1px solid var(--panel-edge);
+}
+button.difficulty[aria-pressed='true'] { border-color: var(--guild-bright); background: linear-gradient(180deg, color-mix(in srgb, var(--guild) 40%, var(--panel)), var(--stone)); }
+.difficulty-name { font-family: var(--font-display), serif; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--parchment); }
+.difficulty-hint { color: var(--muted); }
+
+.corridor { display: flex; align-items: center; gap: 6px; margin-top: 16px; flex-wrap: wrap; }
+.corridor-room {
+  width: 42px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  font-size: 1.4rem;
+  background: rgb(0 0 0 / 0.4);
+  border: 1px solid var(--iron);
+  border-radius: 20px 20px 2px 2px;
+}
+.corridor-room[data-state='done'] { opacity: 0.45; }
+.corridor-room[data-state='here'] { border-color: var(--guild-bright); background: color-mix(in srgb, var(--guild) 40%, transparent); box-shadow: 0 0 12px color-mix(in srgb, var(--guild-bright) 40%, transparent); }
+.corridor-loot { margin-left: auto; font-family: var(--font-display), serif; color: var(--parchment); }
+.chamber h2 { font-size: 1.4rem; margin: 6px 0 14px; }
+.run-end[data-result='won'] strong { color: var(--gold); }

@@ -1,10 +1,12 @@
 'use client'
 import { hc } from 'hono/client'
+import { motion } from 'motion/react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 import { useChannel } from '@/platform/realtime/use-channel'
 import { Entity } from '@/ui/entity'
+import { Fighter } from '@/ui/fighter'
 import { useCountdown } from '@/ui/use-countdown'
 import type { DungeonApi } from './api'
 import {
@@ -47,6 +49,15 @@ const ERRORS: Record<ApiError['code'], string> = {
 /** Libellé de chaque niveau de difficulté. */
 const DIFFICULTY_LABELS: Record<Difficulty, string> = { easy: 'Facile', hard: 'Difficile' }
 
+/** Description de chaque niveau de difficulté, affichée lors de son choix. */
+const DIFFICULTY_HINTS: Record<Difficulty, string> = {
+  easy: 'Les monstres frappent au hasard. Pour une première descente.',
+  hard: 'Les monstres frappent plus fort, et visent le héros le plus affaibli.',
+}
+
+/** Identifiants des quatre places d'une expédition. */
+const SEATS = Array.from({ length: MAX_HEROES }, (_, index) => `place-${index + 1}`)
+
 /** Libellé affiché pour chaque état de la connexion temps réel. */
 const STATUS_LABELS = {
   connecting: 'Connexion...',
@@ -80,26 +91,37 @@ export function DungeonLobby() {
 
   return (
     <>
-      <h1>
-        <Entity kind="dungeon" /> Donjon
-      </h1>
-      <div className="panel row">
-        <label htmlFor="difficulty">Niveau</label>
-        <select
-          id="difficulty"
-          value={difficulty}
-          onChange={(e) => setDifficulty(e.target.value as Difficulty)}
-        >
-          {DIFFICULTIES.map((level) => (
-            <option key={level} value={level}>
-              {DIFFICULTY_LABELS[level]}
-            </option>
-          ))}
-        </select>
-        <button type="button" onClick={open}>
-          Ouvrir une nouvelle expédition
-        </button>
-      </div>
+      <header className="page-header">
+        <div>
+          <p className="page-kicker">Sous les ruines du royaume</p>
+          <h1>
+            <Entity kind="dungeon" /> Donjon
+          </h1>
+        </div>
+      </header>
+      <p className="muted">
+        Six salles, des trésors, et un troll au fond. Descendez seul avec des compagnons, ou jusqu'à
+        quatre héros.
+      </p>
+
+      <section className="difficulties" aria-label="Niveau de difficulté">
+        {DIFFICULTIES.map((level) => (
+          <button
+            key={level}
+            type="button"
+            className="difficulty"
+            aria-pressed={difficulty === level}
+            onClick={() => setDifficulty(level)}
+          >
+            <span className="difficulty-name">{DIFFICULTY_LABELS[level]}</span>
+            <span className="difficulty-hint">{DIFFICULTY_HINTS[level]}</span>
+          </button>
+        ))}
+      </section>
+      <button type="button" className="big-button" onClick={open}>
+        <Entity kind="door" /> Ouvrir une expédition ({DIFFICULTY_LABELS[difficulty].toLowerCase()})
+      </button>
+
       <section className="panel" aria-label="Expéditions ouvertes">
         <div className="row" style={{ justifyContent: 'space-between' }}>
           <h2>Expéditions ouvertes</h2>
@@ -117,7 +139,7 @@ export function DungeonLobby() {
                   ({game.heroCount}/{MAX_HEROES} héros)
                 </span>
               </span>
-              <Link href={`/dungeon/${game.gameId}`}>Voir</Link>
+              <Link href={`/dungeon/${game.gameId}`}>Rejoindre</Link>
             </li>
           ))}
         </ul>
@@ -216,17 +238,21 @@ export function DungeonGame({ gameId, userId }: { gameId: string; userId: string
   )
 
   const title = (
-    <div className="row" style={{ justifyContent: 'space-between' }}>
-      <h1>
-        <Entity kind="dungeon" /> Expédition
-        {view && <span className="muted"> - {DIFFICULTY_LABELS[view.difficulty]}</span>}
-      </h1>
+    <header className="page-header">
+      <div>
+        <p className="page-kicker">
+          Expédition{view && ` · ${DIFFICULTY_LABELS[view.difficulty].toLowerCase()}`}
+        </p>
+        <h1>
+          <Entity kind="dungeon" /> Donjon
+        </h1>
+      </div>
       {view?.isMember && (
         <span className="status" data-status={status}>
           {STATUS_LABELS[status]}
         </span>
       )}
-    </div>
+    </header>
   )
 
   if (view === undefined) return title
@@ -250,153 +276,228 @@ export function DungeonGame({ gameId, userId }: { gameId: string; userId: string
   const me = view.heroes.find((hero) => hero.id === userId)
   const standingMonsters = view.monsters.filter((monster) => monster.hp > 0)
   const standingHeroes = view.heroes.filter((hero) => hero.hp > 0)
+  const freeSeats = SEATS.slice(view.heroes.length)
+  const ended = view.phase === 'won' || view.phase === 'lost'
 
   return (
     <>
       {title}
 
-      {/* Héros de l'expédition. */}
-      <section className="panel heroes" aria-label="Héros">
-        {view.heroes.map((hero) => (
-          <div key={hero.id} className="fighter" data-down={hero.hp <= 0}>
-            <span>
-              <Entity kind={hero.companion ? 'companion' : 'hero'} /> {hero.name}
-              {hero.id === view.hostId && <span className="muted"> (hôte)</span>}
-              {hero.companion && <span className="muted"> (piloté par l'ordinateur)</span>}
+      {/* Progression dans le donjon : une porte par salle, la dernière gardée par le troll. */}
+      {view.phase !== 'lobby' && (
+        <section className="corridor" aria-label={`Salle ${view.room + 1} sur ${view.roomCount}`}>
+          {Array.from({ length: view.roomCount }, (_, room) => `salle-${room}`).map((key, room) => (
+            <span
+              key={key}
+              className="corridor-room"
+              data-state={room < view.room ? 'done' : room === view.room ? 'here' : 'ahead'}
+            >
+              <Entity kind={room === view.roomCount - 1 ? 'troll' : 'door'} />
             </span>
-            <span className="muted">
-              {hero.hp}/{hero.maxHp} PV
-            </span>
-            {view.phase === 'combat' && hero.ready && <span className="ok">prêt</span>}
-            {view.turnHeroId === hero.id && <span className="ok">à son tour</span>}
-          </div>
-        ))}
-      </section>
+          ))}
+          <span className="corridor-loot">
+            <Entity kind="gold" /> {view.loot}
+          </span>
+        </section>
+      )}
 
-      {/* Salon : rejoindre ou lancer l'expédition. */}
+      {/* Salon : les quatre places de l'expédition. */}
       {view.phase === 'lobby' && (
-        <div className="panel">
+        <section className="panel" aria-label="Salon">
+          <h2>Le groupe se rassemble</h2>
           <p className="muted">
             Communiquez l'adresse de cette page aux joueurs que vous souhaitez inviter.
           </p>
-          {!view.isMember && view.heroes.length < MAX_HEROES && (
-            <button type="button" onClick={join}>
-              Rejoindre l'expédition
-            </button>
-          )}
-          {view.isHost && view.heroes.length < MAX_HEROES && (
-            <button type="button" onClick={addCompanion}>
-              <Entity kind="companion" /> Ajouter un compagnon
-            </button>
-          )}
-          {view.isHost && (
-            <button type="button" onClick={start}>
-              Entrer dans le donjon
-            </button>
-          )}
+          <div className="party">
+            {view.heroes.map((hero) => (
+              <div key={hero.id} className="seat">
+                <Entity kind={hero.companion ? 'companion' : 'hero'} />
+                <strong>{hero.name}</strong>
+                <span className="muted">
+                  {hero.companion ? "Piloté par l'ordinateur" : 'Héros'}
+                  {hero.id === view.hostId && ' · hôte'}
+                </span>
+              </div>
+            ))}
+            {freeSeats.map((seat) => (
+              <div key={seat} className="seat" data-free="true">
+                <span className="muted">Place libre</span>
+              </div>
+            ))}
+          </div>
+          <div className="row">
+            {!view.isMember && view.heroes.length < MAX_HEROES && (
+              <button type="button" onClick={join}>
+                Rejoindre l'expédition
+              </button>
+            )}
+            {view.isHost && view.heroes.length < MAX_HEROES && (
+              <button type="button" onClick={addCompanion}>
+                <Entity kind="companion" /> Ajouter un compagnon
+              </button>
+            )}
+            {view.isHost && (
+              <button type="button" className="big-button" onClick={start}>
+                <Entity kind="door" /> Entrer dans le donjon
+              </button>
+            )}
+          </div>
           {view.isMember && !view.isHost && (
             <p className="muted">En attente du lancement par l'hôte.</p>
           )}
-        </div>
+        </section>
       )}
 
-      {/* Exploration : ouvrir la porte suivante, à tour de rôle. */}
+      {/* Exploration : la salle courante, puis la porte suivante, à tour de rôle. */}
       {view.phase === 'exploring' && (
-        <div className="panel">
+        <motion.section
+          key={view.room}
+          className="panel chamber"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+        >
           <div className="row" style={{ justifyContent: 'space-between' }}>
-            <h2>Exploration</h2>
+            <p className="page-kicker">
+              {view.room < 0
+                ? "À l'entrée du donjon"
+                : `Salle ${view.room + 1} sur ${view.roomCount}`}
+            </p>
             {remaining !== null && (
               <span className="countdown" title="La porte s'ouvrira d'elle-même">
                 {remaining} s
               </span>
             )}
           </div>
-          <p>
-            Salle {view.room + 1} sur {view.roomCount}
-            {view.currentRoom?.kind === 'treasure' && ` : un trésor de ${view.currentRoom.gold} or`}
-            {view.currentRoom?.kind === 'empty' && ' : une salle vide'}
-            {' - '}
-            <Entity kind="gold" /> {view.loot}
-          </p>
+          <h2>
+            {view.currentRoom?.kind === 'treasure' &&
+              `Un trésor : ${view.currentRoom.gold} pièces d'or !`}
+            {view.currentRoom?.kind === 'empty' && 'Une salle vide, silencieuse.'}
+            {view.currentRoom?.kind === 'monsters' && 'Les monstres sont vaincus.'}
+            {!view.currentRoom && 'Une lourde porte vous fait face.'}
+          </h2>
           {view.turnHeroId === userId ? (
-            <button type="button" onClick={openDoor}>
+            <button type="button" className="big-button" onClick={openDoor}>
               <Entity kind="door" /> Ouvrir la porte suivante
             </button>
           ) : (
-            <p className="muted">Au tour de {nameOf(view.turnHeroId ?? '')}.</p>
+            <p className="muted">Au tour de {nameOf(view.turnHeroId ?? '')} d'ouvrir la porte.</p>
           )}
-        </div>
+        </motion.section>
       )}
 
-      {/* Combat : monstres, compte à rebours et choix de l'action. */}
+      {/* Combat : les héros face aux monstres, puis le choix de l'action. */}
       {view.phase === 'combat' && (
-        <div className="panel">
-          <div className="row" style={{ justifyContent: 'space-between' }}>
-            <h2>
-              Combat - salle {view.room + 1}, manche {view.round}
-            </h2>
-            {remaining !== null && <span className="countdown">{remaining} s</span>}
-          </div>
-          <div className="monsters">
-            {view.monsters.map((monster) => (
-              <div key={monster.id} className="fighter" data-down={monster.hp <= 0}>
-                <span>
-                  <Entity kind={monster.kind} /> {monsterName(monster, view.monsters)}
+        <>
+          <section className="floor">
+            <div>
+              <p className="page-kicker">Salle {view.room + 1}</p>
+              <strong>Combat</strong>
+            </div>
+            <div className="floor-round">
+              <span className="muted">Manche {view.round}</span>
+              {remaining !== null && (
+                <span className="countdown" data-urgent={remaining <= 5}>
+                  {remaining} s
                 </span>
-                <span className="muted">
-                  {monster.hp}/{monster.maxHp} PV
-                </span>
-              </div>
-            ))}
-          </div>
-          {me && me.hp > 0 && !me.action && (
-            <div className="actions">
-              {standingMonsters.map((monster) => (
-                <button
-                  key={monster.id}
-                  type="button"
-                  onClick={() => act({ type: 'attack', target: monster.id })}
-                >
-                  Attaquer {monsterName(monster, view.monsters)}
-                </button>
-              ))}
-              <button type="button" onClick={() => act({ type: 'defend' })}>
-                Se défendre
-              </button>
-              {standingHeroes.map((hero) => (
-                <button
+              )}
+            </div>
+          </section>
+          <section className="battlefield" aria-label="Combat">
+            <div className="side">
+              {view.heroes.map((hero) => (
+                <Fighter
                   key={hero.id}
-                  type="button"
-                  onClick={() => act({ type: 'heal', target: hero.id })}
-                >
-                  Soigner {hero.name}
-                </button>
+                  kind={hero.companion ? 'companion' : 'hero'}
+                  name={hero.name}
+                  detail={hero.companion ? "Piloté par l'ordinateur" : 'Héros'}
+                  hp={hero.hp}
+                  maxHp={hero.maxHp}
+                  mine={hero.id === userId}
+                  badge={hero.ready ? 'prêt' : null}
+                />
               ))}
             </div>
-          )}
-          {me?.action && (
-            <p className="muted">
-              Votre choix : {describeAction(me.action, nameOf)}. En attente des autres héros.
-            </p>
-          )}
-        </div>
+            <div className="versus" aria-hidden="true">
+              contre
+            </div>
+            <div className="side">
+              {view.monsters.map((monster) => (
+                <Fighter
+                  key={`${view.room}-${monster.id}`}
+                  kind={monster.kind}
+                  name={monsterName(monster, view.monsters)}
+                  detail={`${monster.attack} d'attaque`}
+                  hp={monster.hp}
+                  maxHp={monster.maxHp}
+                  foe
+                />
+              ))}
+            </div>
+          </section>
+          <section className="panel" aria-label="Votre action">
+            {me && me.hp > 0 && !me.action && (
+              <div className="actions">
+                {standingMonsters.map((monster) => (
+                  <button
+                    key={monster.id}
+                    type="button"
+                    onClick={() => act({ type: 'attack', target: monster.id })}
+                  >
+                    <Entity kind="attacker" /> Attaquer {monsterName(monster, view.monsters)}
+                  </button>
+                ))}
+                <button type="button" onClick={() => act({ type: 'defend' })}>
+                  <Entity kind="tank" /> Se défendre
+                </button>
+                {standingHeroes.map((hero) => (
+                  <button
+                    key={hero.id}
+                    type="button"
+                    onClick={() => act({ type: 'heal', target: hero.id })}
+                  >
+                    <Entity kind="healer" /> Soigner {hero.name}
+                  </button>
+                ))}
+              </div>
+            )}
+            {me?.action && (
+              <p className="muted">
+                Votre choix : {describeAction(me.action, nameOf)}. En attente des autres héros.
+              </p>
+            )}
+            {me && me.hp <= 0 && <p className="muted">Votre héros est tombé.</p>}
+            {!me && <p className="muted">Vous observez cette expédition.</p>}
+          </section>
+        </>
       )}
 
       {/* Fin de l'expédition. */}
-      {(view.phase === 'won' || view.phase === 'lost') && (
-        <div className="panel">
-          <h2>{view.phase === 'won' ? 'Victoire !' : 'Défaite...'}</h2>
-          <p>
-            Butin de l'expédition : <Entity kind="gold" /> {view.loot}
+      {ended && (
+        <motion.section
+          className="panel run-end"
+          data-result={view.phase}
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5 }}
+        >
+          <p className="page-kicker">
+            {view.phase === 'won' ? 'Le troll est tombé' : 'Le groupe est tombé'}
           </p>
-          <Link href="/dungeon">Retour au Donjon</Link>
-        </div>
+          <strong>{view.phase === 'won' ? 'Victoire' : 'Défaite'}</strong>
+          <span>
+            Butin : <Entity kind="gold" /> {view.loot}
+          </span>
+          <Link href="/dungeon" className="button">
+            Retour au Donjon
+          </Link>
+        </motion.section>
       )}
 
-      {/* Résultat de la dernière manche, connu de tous une fois la manche résolue. */}
+      {/* Chronique de la dernière manche, connue de tous une fois la manche résolue. */}
       {view.lastRound && (
-        <section className="panel" aria-label="Dernière manche">
-          <h2>Manche {view.lastRound.round}</h2>
+        <section className="panel chronicle" aria-label="Dernière manche">
+          <h2>Chronique de la manche {view.lastRound.round}</h2>
           <ul className="log">
             {Object.entries(view.lastRound.actions).map(([heroId, action]) => (
               <li key={heroId}>
@@ -405,7 +506,7 @@ export function DungeonGame({ gameId, userId }: { gameId: string; userId: string
             ))}
             {view.lastRound.effects.map((effect) => (
               // Chaque combattant n'agit qu'une fois par manche : ce triplet identifie l'effet.
-              <li key={`${effect.kind}-${effect.source}-${effect.target}`}>
+              <li key={`${effect.kind}-${effect.source}-${effect.target}`} data-kind={effect.kind}>
                 {describeEffect(effect, nameOf)}.
               </li>
             ))}
