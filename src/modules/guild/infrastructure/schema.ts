@@ -1,9 +1,9 @@
-import { bigint, bigserial, index, pgSchema, text } from 'drizzle-orm/pg-core'
+import { bigint, bigserial, index, integer, pgSchema, text } from 'drizzle-orm/pg-core'
 
 /**
  * Schéma PostgreSQL du module Guilde. L'appartenance et les expéditions de la Faille sont
  * enregistrées dans le journal ; les tables de ce schéma tiennent les messages du chat,
- * destinés à disparaître (ADR 0010).
+ * destinés à disparaître (ADR 0010), et les modèles de lecture tenus par des projections.
  */
 export const guild = pgSchema('guild')
 
@@ -28,4 +28,24 @@ export const messages = guild.table(
     // La durée de conservation supprime les messages les plus anciens.
     index('messages_posted_at_idx').on(t.postedAt),
   ],
+)
+
+/**
+ * Expéditions de la Faille qui n'ont été ni lancées ni terminées, tenues à jour par la
+ * projection des expéditions ouvertes. Une expédition quitte la table dès son lancement.
+ */
+export const openRuns = guild.table(
+  'open_runs',
+  {
+    runId: text('run_id').primaryKey(),
+    guild: text('guild').notNull(),
+    /** Jour de la Faille : une expédition ne peut être rejointe que le jour de son ouverture. */
+    day: text('day').notNull(),
+    hostName: text('host_name').notNull(),
+    heroCount: integer('hero_count').notNull(),
+    /** Date d'ouverture, en millisecondes, comme le champ at des événements. */
+    createdAt: bigint('created_at', { mode: 'number' }).notNull(),
+  },
+  // La liste ne présente que les expéditions d'une guilde, ouvertes le jour même.
+  (t) => [index('open_runs_guild_day_idx').on(t.guild, t.day)],
 )

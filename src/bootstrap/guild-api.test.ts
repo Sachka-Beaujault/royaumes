@@ -145,6 +145,7 @@ describe('API du module Guilde', () => {
     expect(sections.guild).toEqual({
       guild: 'green',
       history: [{ kind: 'joined', guild: 'green', at: expect.any(Number) }],
+      expeditions: [],
       messages: [],
     })
   })

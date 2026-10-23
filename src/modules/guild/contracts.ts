@@ -6,14 +6,27 @@
 import { z } from 'zod'
 import { GUILDS, type GuildId } from './domain/catalog'
 import { MESSAGE_MAX_LENGTH } from './domain/chat'
+import { ROLES } from './domain/rift-content'
 
 export type { DayKey } from './domain/calendar'
-export { dayOf, PREVIEW_DAYS, riftCalendar } from './domain/calendar'
+export { dayOf, PREVIEW_DAYS, riftCalendar, riftName } from './domain/calendar'
 export type { GuildId } from './domain/catalog'
 export { CHANGE_COST, GUILD_INFO, GUILDS } from './domain/catalog'
 export type { ChatError } from './domain/chat'
 export { MESSAGE_MAX_LENGTH } from './domain/chat'
 export type { MemberError } from './domain/member'
+export type { RiftMonsterKind, Role } from './domain/rift-content'
+export {
+  BOSS_EVERY,
+  MAX_HEROES,
+  RIFT_MONSTERS,
+  ROLE_STATS,
+  ROLES,
+  ROUND_MS,
+} from './domain/rift-content'
+export type { RunError } from './domain/rift-rules'
+export type { RunAction, RunEffect, RunMonster, RunPhase } from './domain/run'
+export type { RunHeroView, RunView } from './domain/run-view'
 export type { MemberView } from './domain/view'
 
 /** Corps attendu pour choisir sa première guilde, ou demander à en changer. */
@@ -60,3 +73,45 @@ export const guildChatChannel = (guild: GuildId) => `${GUILD_CHAT_PREFIX}${guild
 
 /** Type sous lequel un nouveau message est annoncé sur le canal. */
 export const GUILD_MESSAGE_POSTED = 'GuildMessagePosted'
+
+// ---------------------------------------------------------------------------
+// La Faille
+// ---------------------------------------------------------------------------
+
+/** Expédition de la Faille qui peut encore être rejointe, telle que la présente la liste. */
+export interface OpenRun {
+  runId: string
+  hostName: string
+  heroCount: number
+  createdAt: number
+}
+
+/** Corps attendu pour ouvrir ou rejoindre une expédition : le rôle choisi par le joueur. */
+export const ChooseRoleInput = z.object({
+  role: z.enum(ROLES),
+})
+
+/** Corps attendu pour choisir une action : la manche visée et l'action elle-même. */
+export const SubmitRunActionInput = z.object({
+  round: z.number().int().positive(),
+  action: z.discriminatedUnion('type', [
+    z.object({ type: z.literal('attack'), target: z.string().min(1) }),
+    z.object({ type: z.literal('defend') }),
+    z.object({ type: z.literal('heal'), target: z.string().min(1) }),
+  ]),
+})
+
+/** Préfixe commun aux noms des flux, et des canaux, de toutes les expéditions de la Faille. */
+export const RUN_CHANNEL_PREFIX = 'guild-rift-'
+
+/**
+ * Nom du canal temps réel d'une expédition, identique au nom du flux qui contient ses
+ * événements dans le journal.
+ */
+export const runChannel = (runId: string) => `${RUN_CHANNEL_PREFIX}${runId}`
+
+/** Préfixe des flux des jours de la Faille, qui conservent la graine secrète de chaque jour. */
+export const DAY_STREAM_PREFIX = 'guild-day-'
+
+/** Nom du flux d'un jour de la Faille. */
+export const dayStream = (day: string) => `${DAY_STREAM_PREFIX}${day}`

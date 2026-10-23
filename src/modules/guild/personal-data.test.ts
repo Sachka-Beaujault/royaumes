@@ -28,6 +28,7 @@ describe('Guilde - données personnelles', () => {
         { kind: 'change-requested', guild: 'blue', at: T0 + 1 },
         { kind: 'changed', guild: 'blue', at: T0 + 2 },
       ],
+      expeditions: [],
       messages: [],
     })
   })

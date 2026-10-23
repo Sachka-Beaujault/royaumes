@@ -3,11 +3,14 @@ import type { AppEnv } from '@/platform/http/types'
 import { validateJson } from '@/platform/http/validate'
 import type { ChatService } from './application/chat-service'
 import type { GuildService } from './application/guild-service'
+import type { RiftError, RiftService } from './application/rift-service'
 import {
   type ChatError,
   ChooseGuildInput,
+  ChooseRoleInput,
   type MemberError,
   PostGuildMessageInput,
+  SubmitRunActionInput,
 } from './contracts'
 
 /** Code HTTP associé à chaque erreur métier. */
@@ -28,12 +31,30 @@ const CHAT_STATUS: Record<ChatError['code'], 403 | 422 | 429> = {
   TOO_MANY_MESSAGES: 429,
 }
 
+/** Code HTTP associé à chaque erreur de la Faille. */
+const RIFT_STATUS: Record<RiftError['code'], 403 | 404 | 409 | 422> = {
+  NO_GUILD: 403,
+  ALREADY_ENTERED_TODAY: 409,
+  RUN_NOT_FOUND: 404,
+  ALREADY_EXISTS: 409,
+  WRONG_PHASE: 409,
+  RUN_FULL: 409,
+  ALREADY_JOINED: 409,
+  WRONG_GUILD: 403,
+  NOT_A_MEMBER: 403,
+  NOT_HOST: 403,
+  HERO_DOWN: 409,
+  ROUND_OVER: 409,
+  ALREADY_CHOSEN: 409,
+  INVALID_TARGET: 422,
+}
+
 /**
  * Sous-application Hono du module Guilde, montée sur /api/guild.
  * Le joueur est toujours celui que l'authentification a identifié : aucune route
  * n'accepte un identifiant de joueur dans la requête.
  */
-export function createGuildApi(service: GuildService, chat: ChatService) {
+export function createGuildApi(service: GuildService, chat: ChatService, rift: RiftService) {
   return (
     new Hono<AppEnv>()
       // Appartenance du joueur : sa guilde, et sa demande de changement en cours.
@@ -73,6 +94,65 @@ export function createGuildApi(service: GuildService, chat: ChatService) {
           c.header('Retry-After', String(Math.ceil(result.error.retryAfterMs / 1000)))
         }
         return c.json({ error: result.error }, CHAT_STATUS[result.error.code])
+      })
+
+      // La Faille du jour et des jours suivants, et les expéditions ouvertes de la guilde.
+      .get('/rift', async (c) => c.json(await rift.overview(c.var.userId)))
+
+      // Ouverture d'une expédition, avec le rôle choisi : le joueur en devient l'hôte.
+      .post('/rift/runs', validateJson(ChooseRoleInput), async (c) => {
+        const player = { id: c.var.userId, name: c.var.userName }
+        const { runId, result } = await rift.open(player, c.req.valid('json').role)
+        return result.ok
+          ? c.json({ runId, view: result.view }, 201)
+          : c.json({ error: result.error }, RIFT_STATUS[result.error.code])
+      })
+
+      // Vue d'une expédition, filtrée pour le joueur.
+      .get('/rift/runs/:id', async (c) => {
+        const view = await rift.getView(c.req.param('id'), c.var.userId)
+        return view ? c.json({ view }) : c.json({ error: { code: 'RUN_NOT_FOUND' as const } }, 404)
+      })
+
+      .post('/rift/runs/:id/join', validateJson(ChooseRoleInput), async (c) => {
+        const player = { id: c.var.userId, name: c.var.userName }
+        const result = await rift.join(c.req.param('id'), player, c.req.valid('json').role)
+        return result.ok
+          ? c.json({ view: result.view })
+          : c.json({ error: result.error }, RIFT_STATUS[result.error.code])
+      })
+
+      .post('/rift/runs/:id/start', async (c) => {
+        const result = await rift.execute(c.req.param('id'), c.var.userId, {
+          type: 'StartRun',
+          playerId: c.var.userId,
+        })
+        return result.ok
+          ? c.json({ view: result.view })
+          : c.json({ error: result.error }, RIFT_STATUS[result.error.code])
+      })
+
+      .post('/rift/runs/:id/action', validateJson(SubmitRunActionInput), async (c) => {
+        const { round, action } = c.req.valid('json')
+        const result = await rift.execute(c.req.param('id'), c.var.userId, {
+          type: 'SubmitAction',
+          playerId: c.var.userId,
+          round,
+          action,
+        })
+        return result.ok
+          ? c.json({ view: result.view })
+          : c.json({ error: result.error }, RIFT_STATUS[result.error.code])
+      })
+
+      // Commande d'échéance, envoyée par l'interface lorsque son compte à rebours atteint zéro.
+      .post('/rift/runs/:id/deadline', async (c) => {
+        const result = await rift.execute(c.req.param('id'), c.var.userId, {
+          type: 'CheckDeadline',
+        })
+        return result.ok
+          ? c.json({ view: result.view })
+          : c.json({ error: result.error }, RIFT_STATUS[result.error.code])
       })
   )
 }

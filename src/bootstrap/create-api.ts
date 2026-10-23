@@ -88,7 +88,13 @@ export function createApi({
 
   const tavern = createTavernModule({ db, clock })
   // La Guilde, comme le Marché, déclenche la distribution après ses commandes et ses consultations.
-  const guild = createGuildModule({ store, db, dispatch: () => dispatcher.dispatch(), clock })
+  const guild = createGuildModule({
+    store,
+    db,
+    projections,
+    dispatch: () => dispatcher.dispatch(),
+    clock,
+  })
 
   // Droits des joueurs : chaque module fournit ses données personnelles. L'identité vient
   // en dernier : tant qu'elle n'est pas effacée, le joueur peut relancer un effacement interrompu.

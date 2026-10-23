@@ -5,21 +5,27 @@
  */
 import type { Db } from '@/platform/db/client'
 import type { EventStore } from '@/platform/event-store/event-store'
+import type { ProjectionRunner } from '@/platform/projection/projection'
 import type { ChannelPolicy } from '@/platform/realtime/channel-policy'
 import { createGuildApi } from './api'
 import { createChatService } from './application/chat-service'
 import { createGuildService } from './application/guild-service'
-import { GUILD_MESSAGE_POSTED, GUILDS, guildChatChannel } from './contracts'
+import { createRiftService } from './application/rift-service'
+import { GUILD_MESSAGE_POSTED, GUILDS, guildChatChannel, RUN_CHANNEL_PREFIX } from './contracts'
 import { createDrizzleChatRepository } from './infrastructure/drizzle-chat-repository'
+import { createDrizzleOpenRunsReader } from './infrastructure/drizzle-open-runs-reader'
 import { createEventStoreMemberRepository } from './infrastructure/event-store-member-repository'
+import { createEventStoreRunRepository } from './infrastructure/event-store-run-repository'
 import { createGuildHandlers } from './messages'
 import { createGuildPersonalData } from './personal-data'
 
 export interface GuildModuleDeps {
   /** Journal d'événements de la plateforme. */
   store: EventStore
-  /** Base de données, dans laquelle la Guilde tient les messages de ses chats. */
+  /** Base de données, dans laquelle la Guilde tient les messages de ses chats et ses modèles de lecture. */
   db: Db
+  /** Moteur des projections de la plateforme. */
+  projections: ProjectionRunner
   /** Distribution de la boîte d'envoi, déclenchée par la Guilde après ses commandes et lectures. */
   dispatch: () => Promise<unknown>
   /** Horloge de référence ; l'heure réelle par défaut. */
@@ -33,11 +39,13 @@ const CHANNEL_BATCH = 100
  * Fabrique du module : assemble les adaptateurs, les services, l'API, les règles des canaux et
  * les gestionnaires de messages.
  */
-export function createGuildModule({ store, db, dispatch, clock }: GuildModuleDeps) {
+export function createGuildModule({ store, db, projections, dispatch, clock }: GuildModuleDeps) {
   const members = createEventStoreMemberRepository(store)
   const service = createGuildService(members, { dispatch, clock })
   const chatRepo = createDrizzleChatRepository(db)
   const chat = createChatService(chatRepo, members, clock)
+  const openRuns = createDrizzleOpenRunsReader(db, projections)
+  const rift = createRiftService(createEventStoreRunRepository(store), openRuns, service, { clock })
 
   // Un canal par chat de guilde, réservé à ses membres : l'appartenance est relue dans le
   // journal à chaque abonnement. Comme celui de la Taverne, il ne lit pas le journal, mais la
@@ -68,10 +76,21 @@ export function createGuildModule({ store, db, dispatch, clock }: GuildModuleDep
     },
   }))
 
+  // Canaux des expéditions de la Faille : seuls leurs héros peuvent les écouter. Le canal est
+  // discret, comme celui du Donjon : l'événement ActionSubmitted révélerait l'action choisie.
+  channelPolicies.push({
+    prefix: RUN_CHANNEL_PREFIX,
+    redact: true,
+    canSubscribe: async (channel, userId) => {
+      const view = await rift.getView(channel.slice(RUN_CHANNEL_PREFIX.length), userId)
+      return view?.isMember ?? false
+    },
+  })
+
   // La tâche quotidienne est confiée à la racine de composition, qui la fait exécuter
   // par la tâche planifiée de Vercel.
   return {
-    api: createGuildApi(service, chat),
+    api: createGuildApi(service, chat, rift),
     channelPolicies,
     dailyTask: chat.purge,
     handlers: createGuildHandlers(service),

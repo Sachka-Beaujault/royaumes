@@ -119,7 +119,25 @@ export function createGuildService(
     if (!decision.ok) throw new Error(`Membre ${playerId} : ${decision.error.code}`)
   }
 
-  return { join, requestChange, getView, step }
+  /**
+   * Participation du joueur à la Faille, enregistrée avant son inscription à une expédition.
+   * Si une demande de changement est en attente, elle devient impossible : la saga rembourse
+   * l'or à la réception de la réponse du Village.
+   */
+  const enterRift = (playerId: string, runId: string) =>
+    process(playerId, { type: 'EnterRift', runId })
+
+  /** Annule une participation dont l'inscription à l'expédition a échoué. */
+  const cancelRiftEntry = (playerId: string, runId: string) =>
+    process(playerId, { type: 'CancelRiftEntry', runId })
+
+  /** Guilde actuelle d'un joueur ; null s'il n'en a choisi aucune. */
+  async function guildOf(playerId: string) {
+    const { state } = await repo.load(playerId)
+    return state.guild
+  }
+
+  return { join, requestChange, getView, step, enterRift, cancelRiftEntry, guildOf }
 }
 
 /** Type du service, déduit de sa fabrique. */
