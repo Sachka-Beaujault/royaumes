@@ -18,3 +18,4 @@ un nouvel ADR est rédigé et l'ancien prend le statut « remplacé ».
 | [0010](0010-module-guilde-stockage.md) | Module Guilde : journal pour l'appartenance et la Faille, tables classiques pour le chat | Accepté |
 | [0011](0011-saga-changement-guilde.md) | Saga orchestrée par la Guilde, par la boîte d'envoi, pour payer un changement de guilde au Village | Accepté |
 | [0012](0012-faille-quotidienne.md) | La Faille : graine secrète du jour, échéances paresseuses, participation quotidienne dans le flux du joueur | Accepté |
+| [0013](0013-classement-guildes.md) | Classement des guildes tenu par une projection, et clôture quotidienne des expéditions abandonnées | Accepté |
