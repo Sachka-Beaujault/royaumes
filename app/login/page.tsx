@@ -46,7 +46,8 @@ export default function LoginPage() {
     setPending(false)
 
     if (result.error) setError(messageFor(result.error))
-    else router.push('/village')
+    // La page d'accueil oriente le joueur vers le choix de sa guilde, ou vers son village.
+    else router.push('/')
   }
 
   return (

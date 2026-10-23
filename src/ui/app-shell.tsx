@@ -25,13 +25,15 @@ const GUILD_PAGE = '/guild'
  */
 export function AppShell({
   userName,
-  hasGuild,
+  guild,
   children,
 }: {
   userName: string
-  hasGuild: boolean
+  /** Guilde du joueur (« red », « green », « blue ») ; null s'il n'en a choisi aucune. */
+  guild: string | null
   children: ReactNode
 }) {
+  const hasGuild = guild !== null
   const pathname = usePathname()
   const router = useRouter()
   // DETTE TECHNIQUE (docs/qualite/dette-technique.md, DT-018) : le choix de la guilde n'est
@@ -50,10 +52,19 @@ export function AppShell({
     window.location.href = '/login'
   }
 
+  // Les couleurs de la guilde du joueur s'appliquent à tout le cadre du jeu, par l'attribut
+  // data-guild, que lisent les variables de couleur de globals.css. Il est aussi posé sur la
+  // page entière, afin que son fond prenne la couleur de la guilde.
+  useEffect(() => {
+    if (guild) document.documentElement.dataset.guild = guild
+    else delete document.documentElement.dataset.guild
+  }, [guild])
+
   return (
-    <>
+    <div data-guild={guild ?? undefined}>
       <nav className="nav" aria-label="Navigation principale">
-        {NAV.map((item) => (
+        {/* Tant qu'aucune guilde n'est choisie, seul le choix de la guilde est proposé. */}
+        {(hasGuild ? NAV : []).map((item) => (
           <Link
             key={item.href}
             href={item.href}
@@ -73,6 +84,6 @@ export function AppShell({
         </button>
       </nav>
       {allowed && children}
-    </>
+    </div>
   )
 }

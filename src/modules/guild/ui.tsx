@@ -1,5 +1,6 @@
 'use client'
 import { hc } from 'hono/client'
+import { AnimatePresence, motion } from 'motion/react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
@@ -182,7 +183,6 @@ function GuildChat({ guild, userId }: { guild: GuildId; userId: string }) {
  * guilde payant.
  */
 export function GuildScreen({ userId }: { userId: string }) {
-  const router = useRouter()
   // undefined : chargement en cours.
   const [view, setView] = useState<MemberView | undefined>(undefined)
   const [error, setError] = useState<string | null>(null)
@@ -206,13 +206,6 @@ export function GuildScreen({ userId }: { userId: string }) {
   }, [view?.pendingTo, refresh])
 
   // COMMANDES : chaque réponse contient la vue à jour, ou une erreur.
-  async function join(guild: GuildId) {
-    const res = await client.join.$post({ json: { guild } })
-    const body = await res.json()
-    handle(body)
-    // La mise en page du jeu, rendue sur le serveur, ouvre alors les autres pages.
-    if ('view' in body) router.refresh()
-  }
   async function change(guild: GuildId) {
     const res = await client.change.$post({ json: { guild } })
     handle(await res.json())
@@ -236,28 +229,7 @@ export function GuildScreen({ userId }: { userId: string }) {
   if (view === undefined) return title
 
   // Aucune guilde : le choix, gratuit, est demandé avant toute autre page du jeu.
-  if (view.guild === null) {
-    return (
-      <>
-        {title}
-        <section className="panel" aria-label="Choix de la guilde">
-          <p>Choisissez la guilde que vous rejoignez. Ce premier choix est gratuit.</p>
-          {GUILDS.map((guild) => (
-            <div key={guild} className="row" style={{ justifyContent: 'space-between' }}>
-              <span>
-                <GuildName guild={guild} />{' '}
-                <span className="muted">({GUILD_INFO[guild].color})</span>
-              </span>
-              <button type="button" onClick={() => join(guild)}>
-                Rejoindre
-              </button>
-            </div>
-          ))}
-          {error && <p className="error">{error}</p>}
-        </section>
-      </>
-    )
-  }
+  if (view.guild === null) return <Allegiance />
 
   // Membre d'une guilde : sa guilde, sa demande en cours, et le changement payant.
   const current = view.guild
@@ -813,6 +785,125 @@ function GuildRankingPanel({ guild }: { guild: GuildId }) {
           ))}
         </tbody>
       </table>
+    </section>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Choix de la guilde : la cérémonie d'allégeance
+// ---------------------------------------------------------------------------
+
+/** Durée minimale de la cérémonie, en millisecondes, avant l'arrivée au village. */
+const OATH_MS = 2800
+
+/**
+ * Choix de la première guilde : trois bannières côte à côte. Le choix ouvre une cérémonie,
+ * dont la couleur envahit l'écran, puis conduit le joueur à son village, ou à sa fondation.
+ */
+function Allegiance() {
+  const [sworn, setSworn] = useState<GuildId | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  async function swear(guild: GuildId) {
+    setError(null)
+    setSworn(guild)
+    // La cérémonie dure au moins OATH_MS, même si la réponse arrive plus tôt.
+    const [res] = await Promise.all([
+      client.join.$post({ json: { guild } }),
+      new Promise((resolve) => setTimeout(resolve, OATH_MS)),
+    ])
+    const body = await res.json()
+    if ('error' in body) {
+      setSworn(null)
+      setError(ERRORS[(body.error as ApiError).code])
+      return
+    }
+    // Le cadre du jeu, rendu sur le serveur, doit connaître la nouvelle guilde : la page du
+    // village est chargée entièrement, dans les couleurs de la guilde.
+    document.documentElement.dataset.guild = guild
+    window.location.assign('/village')
+  }
+
+  return (
+    <section className="allegiance" aria-label="Choix de la guilde">
+      <motion.header
+        initial={{ opacity: 0, y: -12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+      >
+        <p className="allegiance-kicker">Le royaume vous appelle</p>
+        <h1>Prêtez allégeance</h1>
+        <p className="muted">
+          Trois maisons se disputent la Faille. Choisissez la vôtre : ce premier serment est
+          gratuit, le renier vous coûtera de l'or.
+        </p>
+      </motion.header>
+
+      <div className="banners">
+        {GUILDS.map((guild, index) => (
+          <motion.article
+            key={guild}
+            className="banner"
+            data-guild={guild}
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 + index * 0.15, duration: 0.6, ease: 'easeOut' }}
+            whileHover={{ y: -10 }}
+          >
+            <div className="banner-cloth">
+              <div className="banner-emblem">
+                <Entity kind={`guild-${guild}`} />
+              </div>
+              <h2>{GUILD_INFO[guild].name}</h2>
+              <p className="banner-motto">« {GUILD_INFO[guild].motto} »</p>
+              <p className="banner-portrait">{GUILD_INFO[guild].portrait}</p>
+            </div>
+            <button type="button" disabled={sworn !== null} onClick={() => swear(guild)}>
+              Prêter allégeance
+            </button>
+          </motion.article>
+        ))}
+      </div>
+      {error && <p className="error">{error}</p>}
+
+      <AnimatePresence>
+        {sworn && (
+          <motion.div
+            className="oath"
+            data-guild={sworn}
+            role="status"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.7 }}
+          >
+            <motion.div
+              className="oath-emblem"
+              initial={{ scale: 0.3, rotate: -20, opacity: 0 }}
+              animate={{ scale: 1, rotate: 0, opacity: 1 }}
+              transition={{ delay: 0.3, type: 'spring', stiffness: 90, damping: 12 }}
+            >
+              <Entity kind={`guild-${sworn}`} />
+            </motion.div>
+            <motion.p
+              className="oath-text"
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.9, duration: 0.6 }}
+            >
+              Vous prêtez allégeance à<strong>{GUILD_INFO[sworn].name}</strong>
+            </motion.p>
+            <motion.p
+              className="oath-motto"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 1.6, duration: 0.8 }}
+            >
+              « {GUILD_INFO[sworn].motto} »
+            </motion.p>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </section>
   )
 }

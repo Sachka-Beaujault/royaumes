@@ -8,11 +8,29 @@
 export const GUILDS = ['red', 'green', 'blue'] as const
 export type GuildId = (typeof GUILDS)[number]
 
-/** Nom et couleur de chaque guilde, tels que les présente l'interface. */
-export const GUILD_INFO: Record<GuildId, { name: string; color: string }> = {
-  red: { name: 'Ordre du Dragon', color: 'rouge' },
-  green: { name: 'Cercle du Chêne', color: 'vert' },
-  blue: { name: "Garde de l'Onde", color: 'bleu' },
+/** Nom, couleur, devise et portrait de chaque guilde, tels que les présente l'interface. */
+export const GUILD_INFO: Record<
+  GuildId,
+  { name: string; color: string; motto: string; portrait: string }
+> = {
+  red: {
+    name: 'Ordre du Dragon',
+    color: 'rouge',
+    motto: 'Le feu ne s’éteint jamais',
+    portrait: 'Héritiers des forges et des volcans, ils frappent les premiers et ne reculent pas.',
+  },
+  green: {
+    name: 'Cercle du Chêne',
+    color: 'vert',
+    motto: 'Nos racines tiennent la terre',
+    portrait: 'Gardiens des forêts anciennes, ils endurent les tempêtes et protègent les leurs.',
+  },
+  blue: {
+    name: "Garde de l'Onde",
+    color: 'bleu',
+    motto: 'Ce qui coule ne se brise pas',
+    portrait: 'Marins et veilleurs des côtes, ils contournent l’obstacle et reviennent toujours.',
+  },
 }
 
 /** Prix d'un changement de guilde, prélevé dans le village du joueur. */
