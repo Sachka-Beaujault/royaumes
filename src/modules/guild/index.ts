@@ -139,6 +139,9 @@ export function createGuildReader(store: EventStore) {
     /**
      * Guilde actuelle de plusieurs joueurs, par exemple les auteurs des messages de la Taverne ;
      * un joueur sans guilde est absent du résultat.
+     *
+     * DETTE TECHNIQUE (docs/qualite/dette-technique.md, DT-020) : l'appartenance de chaque joueur
+     * est reconstruite à partir de son flux, l'un après l'autre, à chaque présentation.
      */
     async guildsOf(playerIds: string[]) {
       const guilds: Record<string, GuildId> = {}

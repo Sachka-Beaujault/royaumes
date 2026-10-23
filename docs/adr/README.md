@@ -19,3 +19,4 @@ un nouvel ADR est rédigé et l'ancien prend le statut « remplacé ».
 | [0011](0011-saga-changement-guilde.md) | Saga orchestrée par la Guilde, par la boîte d'envoi, pour payer un changement de guilde au Village | Accepté |
 | [0012](0012-faille-quotidienne.md) | La Faille : graine secrète du jour, échéances paresseuses, participation quotidienne dans le flux du joueur | Accepté |
 | [0013](0013-classement-guildes.md) | Classement des guildes tenu par une projection, et clôture quotidienne des expéditions abandonnées | Accepté |
+| [0014](0014-guilde-dans-la-taverne.md) | Guilde des auteurs de la Taverne fournie par un port de la Taverne, mis en œuvre par la Guilde | Accepté |
