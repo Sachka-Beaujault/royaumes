@@ -3,7 +3,7 @@ import { hc } from 'hono/client'
 import { AnimatePresence, motion } from 'motion/react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
+import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { type ChannelEvent, useChannel } from '@/platform/realtime/use-channel'
 import { Entity } from '@/ui/entity'
 import { ExpeditionRow } from '@/ui/expedition-row'
@@ -894,7 +894,7 @@ function GuildRankingPanel({ guild }: { guild: GuildId }) {
 // ---------------------------------------------------------------------------
 
 /** Durée minimale de la cérémonie, en millisecondes, avant l'arrivée au village. */
-const OATH_MS = 3400
+const OATH_MS = 4400
 
 /** Durée de l'effet propre à chaque guilde, en secondes, avant l'apparition du blason. */
 const EFFECT_S = 1.1
@@ -923,6 +923,110 @@ const SWIRLS = [
   { r: 36, dash: '55 45', turns: -540, width: 1 },
   { r: 44, dash: '20 80', turns: 460, width: 1.4 },
 ]
+
+/** Nombre de particules de chaque guilde : braises, gouttes d'écume ou feuilles. */
+const PARTICLES: Record<GuildId, number> = { red: 34, blue: 40, green: 22 }
+
+/** Particule tirée au hasard : sa position de départ, son retard, sa taille et sa dérive. */
+interface Particle {
+  key: string
+  x: number
+  delay: number
+  size: number
+  drift: number
+  turn: number
+}
+
+/**
+ * Particules de la cérémonie, propres à chaque guilde : des braises qui montent du bas de
+ * l'écran pour le Dragon, des gouttes projetées par l'ouragan pour l'Onde, des feuilles de
+ * chêne qui tombent en tournoyant pour le Chêne. Leur hasard est purement visuel : il est
+ * tiré une fois, à l'ouverture de la cérémonie.
+ */
+function OathParticles({ guild }: { guild: GuildId }) {
+  const particles = useMemo<Particle[]>(
+    () =>
+      Array.from({ length: PARTICLES[guild] }, (_, index) => ({
+        key: `${guild}-${index}`,
+        x: Math.random() * 100,
+        delay: Math.random() * 1.4,
+        size: 0.5 + Math.random(),
+        drift: (Math.random() - 0.5) * 30,
+        turn: (Math.random() - 0.5) * 720,
+      })),
+    [guild],
+  )
+
+  return (
+    <div className="oath-particles" data-kind={guild} aria-hidden="true">
+      {particles.map((p, index) => {
+        if (guild === 'red') {
+          // Braise : elle monte du bas de l'écran en ondulant, puis s'éteint.
+          return (
+            <motion.span
+              key={p.key}
+              className="ember"
+              style={{ left: `${p.x}%`, width: 4 * p.size + 2, height: 4 * p.size + 2 }}
+              initial={{ y: '102vh', opacity: 0 }}
+              animate={{ y: '-10vh', x: [0, p.drift, -p.drift, 0], opacity: [0, 1, 1, 0] }}
+              transition={{ duration: 2.4 + p.size, delay: p.delay, ease: 'easeOut' }}
+            />
+          )
+        }
+        if (guild === 'blue') {
+          // Goutte : projetée du centre de l'ouragan, elle file en spirale vers le bord.
+          const angle = (index / particles.length) * Math.PI * 2 + p.drift / 20
+          const distance = 40 + p.size * 25
+          return (
+            <motion.span
+              key={p.key}
+              className="drop"
+              style={{ width: 3 * p.size + 2, height: 3 * p.size + 2 }}
+              initial={{ x: 0, y: 0, opacity: 0, scale: 0.4 }}
+              animate={{
+                x: [
+                  `0vmin`,
+                  `${Math.cos(angle + 0.8) * distance * 0.5}vmin`,
+                  `${Math.cos(angle + 1.6) * distance}vmin`,
+                ],
+                y: [
+                  `0vmin`,
+                  `${Math.sin(angle + 0.8) * distance * 0.5}vmin`,
+                  `${Math.sin(angle + 1.6) * distance}vmin`,
+                ],
+                opacity: [0, 1, 0],
+                scale: [0.4, 1.2, 0.8],
+              }}
+              transition={{
+                duration: 1.6 + p.size * 0.6,
+                delay: 0.15 + p.delay * 0.6,
+                ease: 'easeOut',
+              }}
+            />
+          )
+        }
+        // Feuille : elle tombe du haut de l'écran en se balançant et en tournoyant.
+        return (
+          <motion.span
+            key={p.key}
+            className="leaf"
+            style={{ left: `${p.x}%`, fontSize: `${0.9 + p.size}rem` }}
+            initial={{ y: '-8vh', opacity: 0, rotate: 0 }}
+            animate={{
+              y: '105vh',
+              x: [0, p.drift * 2, -p.drift * 2, p.drift],
+              rotate: p.turn,
+              opacity: [0, 1, 1, 0.6],
+            }}
+            transition={{ duration: 3 + p.size, delay: 0.4 + p.delay, ease: 'easeIn' }}
+          >
+            <Entity kind="leaf" decorative />
+          </motion.span>
+        )
+      })}
+    </div>
+  )
+}
 
 /**
  * Effet propre à chaque guilde, joué avant l'apparition de son blason : les griffures du
@@ -1117,6 +1221,7 @@ function Allegiance() {
             transition={{ duration: 0.4 }}
           >
             <OathEffect guild={sworn} />
+            <OathParticles guild={sworn} />
             <motion.div
               className="oath-emblem"
               initial={{ scale: 0.3, rotate: -20, opacity: 0 }}

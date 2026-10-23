@@ -1087,7 +1087,7 @@ button.difficulty[aria-pressed='true'] { border-color: var(--guild-bright); back
 }
 
 /* Effets de la cérémonie, propres à chaque guilde, dessinés sous le blason. */
-.oath > :not(.oath-effect) { position: relative; z-index: 1; }
+.oath > :not(.oath-effect):not(.oath-particles) { position: relative; z-index: 1; }
 .oath-effect { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
 .oath-effect path,
 .oath-effect circle { fill: none; stroke-linecap: round; }
@@ -1096,3 +1096,11 @@ button.difficulty[aria-pressed='true'] { border-color: var(--guild-bright); back
 .claw-core { stroke: #ffe2c4; stroke-width: 0.9; }
 .swirl { stroke: #b9dcff; filter: drop-shadow(0 0 4px #6fb4ff); }
 .root { stroke: #9a7442; filter: drop-shadow(0 0 4px rgb(120 200 90 / 0.45)); }
+
+/* Particules de la cérémonie : braises, gouttes d'écume et feuilles de chêne. */
+.oath-particles { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.oath-particles span { position: absolute; top: 0; }
+.ember { border-radius: 50%; background: radial-gradient(circle, #fff3c4, #ff9a3c 45%, #ff4a1c); box-shadow: 0 0 10px 2px rgb(255 110 40 / 0.8); }
+.oath-particles[data-kind='blue'] span { top: 50%; left: 50%; }
+.drop { border-radius: 50% 50% 50% 0; background: #d6ecff; box-shadow: 0 0 8px rgb(140 200 255 / 0.9); }
+.leaf .entity-icon { color: #8fbf63 !important; filter: drop-shadow(0 2px 3px rgb(0 0 0 / 0.5)); }
