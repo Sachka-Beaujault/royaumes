@@ -673,3 +673,81 @@ input.amount { width: 5em; }
   .house-emblem { width: 76px; height: 90px; font-size: 2.4rem; }
   .house h1 { font-size: 1.5rem; }
 }
+
+/* Expédition de la Faille : le salon, l'étage, le champ de bataille et la chronique. */
+.party { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 12px 0 16px; }
+@media (max-width: 640px) { .party { grid-template-columns: repeat(2, 1fr); } }
+.seat {
+  min-height: 120px;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 4px;
+  padding: 12px;
+  text-align: center;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--guild) 30%, transparent), rgb(0 0 0 / 0.3));
+  border: 1px solid var(--panel-edge);
+}
+.seat > .entity { font-size: 2.2rem; }
+.seat strong { color: var(--parchment); }
+.seat[data-free='true'] { background: transparent; border-style: dashed; }
+.big-button { font-size: 0.9rem; padding: 12px 22px; }
+
+.floor {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 18px;
+  padding: 14px 22px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--guild) 45%, transparent), transparent);
+  border-left: 4px solid var(--guild-bright);
+}
+.floor strong { display: block; font-family: var(--font-display), serif; font-size: 2.6rem; line-height: 1; color: var(--parchment); }
+.floor[data-boss='true'] { background: linear-gradient(90deg, rgb(160 30 20 / 0.55), transparent); border-left-color: var(--warn); }
+.floor-round { display: grid; justify-items: end; gap: 2px; }
+.floor-round .countdown { font-size: 1.8rem; }
+.countdown[data-urgent='true'] { color: var(--warn); animation: pulse 1s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: 0.45; } }
+
+.battlefield { display: grid; grid-template-columns: 1fr auto 1fr; gap: 14px; align-items: center; margin-top: 16px; }
+@media (max-width: 720px) { .battlefield { grid-template-columns: 1fr; } .versus { text-align: center; } }
+.side { display: grid; gap: 10px; }
+.versus { font-family: var(--font-display), serif; font-size: 0.75rem; letter-spacing: 0.3em; text-transform: uppercase; color: var(--muted); }
+.fighter-card {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--guild) 26%, var(--panel)), var(--stone));
+  border: 1px solid var(--panel-edge);
+  border-left: 3px solid var(--guild-bright);
+  box-shadow: 0 8px 18px rgb(0 0 0 / 0.4);
+}
+.fighter-card[data-foe='true'] { flex-direction: row-reverse; text-align: right; background: linear-gradient(270deg, rgb(110 30 20 / 0.35), var(--stone)); border-left: 1px solid var(--panel-edge); border-right: 3px solid var(--warn); }
+.fighter-card[data-mine] { outline: 1px solid var(--guild-bright); }
+.fighter-card[data-down='true'] { opacity: 0.4; filter: grayscale(1); }
+.fighter-portrait {
+  flex: none;
+  width: 54px;
+  height: 54px;
+  display: grid;
+  place-items: center;
+  font-size: 1.8rem;
+  border-radius: 50%;
+  border: 2px solid var(--gold-dim);
+  background: rgb(0 0 0 / 0.45);
+}
+.fighter-card[data-foe='true'] .fighter-portrait .entity-icon { color: #d98b75; }
+.fighter-body { flex: 1; display: grid; gap: 2px; min-width: 0; }
+.fighter-head { display: flex; gap: 8px; align-items: baseline; justify-content: space-between; }
+.fighter-card[data-foe='true'] .fighter-head { flex-direction: row-reverse; }
+.fighter-head strong { color: var(--parchment); }
+.hp { position: relative; height: 14px; margin-top: 4px; background: rgb(0 0 0 / 0.6); border: 1px solid var(--iron); overflow: hidden; }
+.hp span { position: absolute; inset: 0 auto 0 0; background: linear-gradient(180deg, #7fbf6a, #3f7d3a); }
+.fighter-card[data-foe='true'] .hp span { inset: 0 0 0 auto; background: linear-gradient(180deg, #e2735c, #8f2a1e); }
+.hp em { position: relative; display: block; font-size: 0.7rem; font-style: normal; line-height: 12px; text-align: center; color: var(--parchment); text-shadow: 0 1px 2px #000; }
+
+.run-end { display: grid; justify-items: center; gap: 6px; text-align: center; }
+.run-end strong { font-family: var(--font-display), serif; font-size: 4rem; line-height: 1; color: var(--parchment); }
+.chronicle .log li[data-kind='damage'] { color: #d98b75; }
+.chronicle .log li[data-kind='heal'] { color: var(--ok); }

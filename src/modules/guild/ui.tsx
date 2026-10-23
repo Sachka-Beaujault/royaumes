@@ -486,6 +486,72 @@ function describeEffect(effect: RunEffect, nameOf: (id: string) => string) {
     : `${nameOf(effect.source)} rend ${effect.amount} points de vie à ${nameOf(effect.target)}`
 }
 
+/** Identifiants des quatre places d'une expédition. */
+const SEATS = Array.from({ length: MAX_HEROES }, (_, index) => `place-${index + 1}`)
+
+/**
+ * Combattant de la Faille : son portrait, son nom et sa jauge de points de vie. La carte
+ * tremble lorsque le combattant perd des points de vie, et la jauge suit ses points de vie.
+ */
+function Fighter({
+  kind,
+  name,
+  detail,
+  hp,
+  maxHp,
+  mine = false,
+  foe = false,
+  badge = null,
+}: {
+  kind: string
+  name: string
+  detail: string
+  hp: number
+  maxHp: number
+  mine?: boolean
+  foe?: boolean
+  badge?: string | null
+}) {
+  // Points de vie lors de l'affichage précédent : une baisse déclenche le tremblement.
+  const previous = useRef(hp)
+  const hit = hp < previous.current
+  useEffect(() => {
+    previous.current = hp
+  }, [hp])
+
+  return (
+    <motion.div
+      className="fighter-card"
+      data-foe={foe}
+      data-mine={mine || undefined}
+      data-down={hp <= 0}
+      animate={hit ? { x: [0, -8, 8, -5, 5, 0] } : { x: 0 }}
+      transition={{ duration: 0.45 }}
+    >
+      <div className="fighter-portrait">
+        <Entity kind={kind} />
+      </div>
+      <div className="fighter-body">
+        <div className="fighter-head">
+          <strong>{name}</strong>
+          {badge && <span className="ok">{badge}</span>}
+        </div>
+        <span className="muted">{detail}</span>
+        <div className="hp" role="img" aria-label={`${hp} points de vie sur ${maxHp}`}>
+          <motion.span
+            initial={false}
+            animate={{ width: `${(100 * hp) / maxHp}%` }}
+            transition={{ duration: 0.5, ease: 'easeOut' }}
+          />
+          <em>
+            {hp}/{maxHp}
+          </em>
+        </div>
+      </div>
+    </motion.div>
+  )
+}
+
 /** Écran d'une expédition de la Faille : salon, étages successifs et fin de l'expédition. */
 export function RiftRun({ runId, userId }: { runId: string; userId: string }) {
   // undefined : chargement en cours ; null : expédition introuvable.
@@ -544,16 +610,27 @@ export function RiftRun({ runId, userId }: { runId: string; userId: string }) {
   )
 
   const title = (
-    <div className="row" style={{ justifyContent: 'space-between' }}>
-      <h1>
-        <Entity kind="rift" /> {view?.name ?? 'La Faille'}
-      </h1>
+    <header className="page-header">
+      <div>
+        <p className="page-kicker">
+          {view ? (
+            <>
+              Expédition de la guilde <GuildName guild={view.guild} />
+            </>
+          ) : (
+            'Expédition'
+          )}
+        </p>
+        <h1>
+          <Entity kind="rift" /> {view?.name ?? 'La Faille'}
+        </h1>
+      </div>
       {view?.isMember && (
         <span className="status" data-status={status}>
           {STATUS_LABELS[status]}
         </span>
       )}
-    </div>
+    </header>
   )
 
   if (view === undefined) return title
@@ -577,36 +654,36 @@ export function RiftRun({ runId, userId }: { runId: string; userId: string }) {
   const me = view.heroes.find((hero) => hero.id === userId)
   const standingMonsters = view.monsters.filter((monster) => monster.hp > 0)
   const standingHeroes = view.heroes.filter((hero) => hero.hp > 0)
+  // Places de l'expédition : les héros, puis les places encore libres.
+  const freeSeats = SEATS.slice(view.heroes.length)
 
   return (
     <>
       {title}
-      <p className="muted">
-        Expédition de la guilde <GuildName guild={view.guild} />
-      </p>
 
-      {/* Héros de l'expédition. */}
-      <section className="panel heroes" aria-label="Héros">
-        {view.heroes.map((hero) => (
-          <div key={hero.id} className="fighter" data-down={hero.hp <= 0}>
-            <span>
-              <Entity kind={hero.role} /> {hero.name}{' '}
-              <span className="muted">({ROLE_LABELS[hero.role]})</span>
-              {hero.id === view.hostId && <span className="muted"> (hôte)</span>}
-            </span>
-            <span className="muted">
-              {hero.hp}/{hero.maxHp} PV
-            </span>
-            {view.phase === 'combat' && hero.ready && <span className="ok">prêt</span>}
-          </div>
-        ))}
-      </section>
-
-      {/* Salon : rejoindre ou lancer l'expédition. */}
+      {/* Salon : les quatre places de l'expédition, à rejoindre ou à lancer. */}
       {view.phase === 'lobby' && (
-        <div className="panel">
+        <section className="panel" aria-label="Salon">
+          <h2>Le groupe se rassemble</h2>
+          <div className="party">
+            {view.heroes.map((hero) => (
+              <div key={hero.id} className="seat" data-role={hero.role}>
+                <Entity kind={hero.role} />
+                <strong>{hero.name}</strong>
+                <span className="muted">
+                  {ROLE_LABELS[hero.role]}
+                  {hero.id === view.hostId && ' · hôte'}
+                </span>
+              </div>
+            ))}
+            {freeSeats.map((seat) => (
+              <div key={seat} className="seat" data-free="true">
+                <span className="muted">Place libre</span>
+              </div>
+            ))}
+          </div>
           {!view.isMember && view.heroes.length < MAX_HEROES && (
-            <div className="row">
+            <div className="rift-cta">
               <RoleSelect value={role} onChange={setRole} />
               <button type="button" onClick={join}>
                 Rejoindre l'expédition
@@ -614,86 +691,134 @@ export function RiftRun({ runId, userId }: { runId: string; userId: string }) {
             </div>
           )}
           {view.isHost && (
-            <button type="button" onClick={start}>
-              Entrer dans la Faille
+            <button type="button" className="big-button" onClick={start}>
+              <Entity kind="rift" /> Entrer dans la Faille
             </button>
           )}
           {view.isMember && !view.isHost && (
             <p className="muted">En attente du lancement par l'hôte.</p>
           )}
-        </div>
+        </section>
       )}
 
-      {/* Combat : monstres de l'étage, compte à rebours et choix de l'action. */}
+      {/* Combat : l'étage, le compte à rebours, puis les héros face aux monstres. */}
       {view.phase === 'combat' && (
-        <div className="panel">
-          <div className="row" style={{ justifyContent: 'space-between' }}>
-            <h2>
-              Étage {view.floor}
-              {view.bossFloor && ' - le Gardien'}, manche {view.round}
-            </h2>
-            {remaining !== null && <span className="countdown">{remaining} s</span>}
-          </div>
-          <div className="monsters">
-            {view.monsters.map((monster) => (
-              <div key={monster.id} className="fighter" data-down={monster.hp <= 0}>
-                <span>
-                  <Entity kind={monster.kind} /> {monsterName(monster, view.monsters)}
+        <>
+          <section className="floor" data-boss={view.bossFloor}>
+            <div>
+              <p className="page-kicker">{view.bossFloor ? 'Le Gardien vous attend' : 'Étage'}</p>
+              <motion.strong
+                key={view.floor}
+                initial={{ scale: 1.6, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: 'spring', stiffness: 180, damping: 14 }}
+              >
+                {view.floor}
+              </motion.strong>
+            </div>
+            <div className="floor-round">
+              <span className="muted">Manche {view.round}</span>
+              {remaining !== null && (
+                <span className="countdown" data-urgent={remaining <= 5}>
+                  {remaining} s
                 </span>
-                <span className="muted">
-                  {monster.hp}/{monster.maxHp} PV
-                </span>
-              </div>
-            ))}
-          </div>
-          {me && me.hp > 0 && !me.action && (
-            <div className="actions">
-              {standingMonsters.map((monster) => (
-                <button
-                  key={monster.id}
-                  type="button"
-                  onClick={() => act({ type: 'attack', target: monster.id })}
-                >
-                  Attaquer {monsterName(monster, view.monsters)}
-                </button>
-              ))}
-              <button type="button" onClick={() => act({ type: 'defend' })}>
-                Se défendre
-              </button>
-              {standingHeroes.map((hero) => (
-                <button
+              )}
+            </div>
+          </section>
+
+          <section className="battlefield" aria-label="Combat">
+            <div className="side">
+              {view.heroes.map((hero) => (
+                <Fighter
                   key={hero.id}
-                  type="button"
-                  onClick={() => act({ type: 'heal', target: hero.id })}
-                >
-                  Soigner {hero.name}
-                </button>
+                  kind={hero.role}
+                  name={hero.name}
+                  detail={ROLE_LABELS[hero.role]}
+                  hp={hero.hp}
+                  maxHp={hero.maxHp}
+                  mine={hero.id === userId}
+                  badge={hero.ready ? 'prêt' : null}
+                />
               ))}
             </div>
-          )}
-          {me?.action && (
-            <p className="muted">
-              Votre choix : {describeAction(me.action, nameOf)}. En attente des autres héros.
-            </p>
-          )}
-        </div>
+            <div className="versus" aria-hidden="true">
+              contre
+            </div>
+            <div className="side">
+              {view.monsters.map((monster) => (
+                <Fighter
+                  key={`${view.floor}-${monster.id}`}
+                  kind={monster.kind}
+                  name={monsterName(monster, view.monsters)}
+                  detail={`${monster.attack} d'attaque`}
+                  hp={monster.hp}
+                  maxHp={monster.maxHp}
+                  foe
+                />
+              ))}
+            </div>
+          </section>
+
+          <section className="panel" aria-label="Votre action">
+            {me && me.hp > 0 && !me.action && (
+              <div className="actions">
+                {standingMonsters.map((monster) => (
+                  <button
+                    key={monster.id}
+                    type="button"
+                    onClick={() => act({ type: 'attack', target: monster.id })}
+                  >
+                    <Entity kind="attacker" /> Attaquer {monsterName(monster, view.monsters)}
+                  </button>
+                ))}
+                <button type="button" onClick={() => act({ type: 'defend' })}>
+                  <Entity kind="tank" /> Se défendre
+                </button>
+                {standingHeroes.map((hero) => (
+                  <button
+                    key={hero.id}
+                    type="button"
+                    onClick={() => act({ type: 'heal', target: hero.id })}
+                  >
+                    <Entity kind="healer" /> Soigner {hero.name}
+                  </button>
+                ))}
+              </div>
+            )}
+            {me?.action && (
+              <p className="muted">
+                Votre choix : {describeAction(me.action, nameOf)}. En attente des autres héros.
+              </p>
+            )}
+            {me && me.hp <= 0 && <p className="muted">Votre héros est tombé.</p>}
+            {!me && <p className="muted">Vous observez cette expédition.</p>}
+          </section>
+        </>
       )}
 
       {/* Fin de l'expédition. */}
       {view.phase === 'ended' && (
-        <div className="panel">
-          <h2>Le groupe est tombé</h2>
-          <p>
-            Étages franchis : <strong>{view.floorsCleared}</strong>
-          </p>
-          <Link href="/guild">Retour à la Guilde</Link>
-        </div>
+        <motion.section
+          className="panel run-end"
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5 }}
+        >
+          <p className="page-kicker">Le groupe est tombé</p>
+          <strong>{view.floorsCleared}</strong>
+          <span>
+            étage{view.floorsCleared > 1 ? 's' : ''} franchi{view.floorsCleared > 1 ? 's' : ''}
+          </span>
+          <Link href="/guild" className="button">
+            Retour à la Guilde
+          </Link>
+        </motion.section>
       )}
 
-      {/* Résultat de la dernière manche, connu de tous une fois la manche résolue. */}
+      {/* Chronique de la dernière manche, connue de tous une fois la manche résolue. */}
       {view.lastRound && (
-        <section className="panel" aria-label="Dernière manche">
-          <h2>Manche {view.lastRound.round}</h2>
+        <section className="panel chronicle" aria-label="Dernière manche">
+          <h2>Chronique de la manche {view.lastRound.round}</h2>
           <ul className="log">
             {Object.entries(view.lastRound.actions).map(([heroId, action]) => (
               <li key={heroId}>
@@ -702,7 +827,7 @@ export function RiftRun({ runId, userId }: { runId: string; userId: string }) {
             ))}
             {view.lastRound.effects.map((effect) => (
               // Chaque combattant n'agit qu'une fois par manche : ce triplet identifie l'effet.
-              <li key={`${effect.kind}-${effect.source}-${effect.target}`}>
+              <li key={`${effect.kind}-${effect.source}-${effect.target}`} data-kind={effect.kind}>
                 {describeEffect(effect, nameOf)}.
               </li>
             ))}
