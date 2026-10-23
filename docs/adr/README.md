@@ -16,3 +16,5 @@ un nouvel ADR est rédigé et l'ancien prend le statut « remplacé ».
 | [0008](0008-donnees-personnelles.md) | Stockage classique pour la Taverne, et réécriture ciblée du journal pour l'effacement | Accepté |
 | [0009](0009-extraction-village.md) | Extraction du Village en service autonome, préparée mais non déployée | Accepté |
 | [0010](0010-module-guilde-stockage.md) | Module Guilde : journal pour l'appartenance et la Faille, tables classiques pour le chat | Accepté |
+| [0011](0011-saga-changement-guilde.md) | Saga orchestrée par la Guilde, par la boîte d'envoi, pour payer un changement de guilde au Village | Accepté |
+| [0012](0012-faille-quotidienne.md) | La Faille : graine secrète du jour, échéances paresseuses, participation quotidienne dans le flux du joueur | Accepté |
