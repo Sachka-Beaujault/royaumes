@@ -59,9 +59,9 @@ const PENDING_REFRESH_MS = 2000
 /** Nom d'une guilde, précédé de son emblème. */
 function GuildName({ guild }: { guild: GuildId }) {
   return (
-    <>
+    <span className="guild-name">
       <Entity kind={`guild-${guild}`} /> {GUILD_INFO[guild].name}
-    </>
+    </span>
   )
 }
 
@@ -231,62 +231,80 @@ export function GuildScreen({ userId }: { userId: string }) {
   // Aucune guilde : le choix, gratuit, est demandé avant toute autre page du jeu.
   if (view.guild === null) return <Allegiance />
 
-  // Membre d'une guilde : sa guilde, sa demande en cours, et le changement payant.
+  // Membre d'une guilde : sa maison, la Faille, le classement, le chat, et le changement payant.
   const current = view.guild
   const locked = view.riftDay === dayOf(Date.now())
   return (
     <>
-      {title}
-      <section className="panel" aria-label="Votre guilde">
-        <h2>
-          <GuildName guild={current} />
-        </h2>
-        {view.pendingTo && (
-          <p className="muted">
-            Changement vers <GuildName guild={view.pendingTo} /> en cours : le paiement est demandé
-            à votre village...
-          </p>
-        )}
-        {view.refunded && (
-          <p className="muted">
-            Changement annulé : vous avez rejoint la Faille pendant la demande. Votre or vous a été
-            remboursé.
-          </p>
-        )}
-        {view.missing && (
-          <p className="error">
-            Changement refusé : il manquait <Entity kind="gold" /> {view.missing.gold ?? 0} à votre
-            village.
-          </p>
-        )}
-      </section>
-      <RiftPanel />
-      <GuildRankingPanel guild={current} />
-      <GuildChat key={current} guild={current} userId={userId} />
-      <section className="panel" aria-label="Changer de guilde">
-        <p>
-          Changer de guilde coûte <Entity kind="gold" /> {CHANGE_COST.gold}, prélevées dans votre
+      <motion.header
+        className="house"
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        <div className="house-emblem">
+          <Entity kind={`guild-${current}`} />
+        </div>
+        <div>
+          <p className="page-kicker">Votre maison</p>
+          <h1>{GUILD_INFO[current].name}</h1>
+          <p className="house-motto">« {GUILD_INFO[current].motto} »</p>
+        </div>
+      </motion.header>
+      {view.pendingTo && (
+        <p className="notice">
+          Changement vers <GuildName guild={view.pendingTo} /> en cours : le paiement est demandé à
+          votre village...
+        </p>
+      )}
+      {view.refunded && (
+        <p className="notice">
+          Changement annulé : vous avez rejoint la Faille pendant la demande. Votre or vous a été
+          remboursé.
+        </p>
+      )}
+      {view.missing && (
+        <p className="notice error">
+          Changement refusé : il manquait <Entity kind="gold" /> {view.missing.gold ?? 0} à votre
           village.
+        </p>
+      )}
+
+      <RiftPanel />
+      <div className="guild-grid">
+        <GuildChat key={current} guild={current} userId={userId} />
+        <GuildRankingPanel guild={current} />
+      </div>
+
+      {/* Le changement de guilde est replié : il se fait rarement, et coûte de l'or. */}
+      <details className="panel renounce">
+        <summary>Renier votre serment</summary>
+        <p className="muted">
+          Rejoindre une autre maison coûte <Entity kind="gold" /> {CHANGE_COST.gold}, prélevées dans
+          votre village.
         </p>
         {locked && (
           <p className="muted">
             Vous avez rejoint la Faille aujourd'hui : votre guilde est figée jusqu'à demain.
           </p>
         )}
-        {GUILDS.filter((guild) => guild !== current).map((guild) => (
-          <div key={guild} className="row" style={{ justifyContent: 'space-between' }}>
-            <GuildName guild={guild} />
-            <button
-              type="button"
-              disabled={!!view.pendingTo || locked}
-              onClick={() => change(guild)}
-            >
-              Rejoindre
-            </button>
-          </div>
-        ))}
+        <div className="renounce-houses">
+          {GUILDS.filter((guild) => guild !== current).map((guild) => (
+            <div key={guild} className="renounce-house" data-guild={guild}>
+              <GuildName guild={guild} />
+              <span className="muted">« {GUILD_INFO[guild].motto} »</span>
+              <button
+                type="button"
+                disabled={!!view.pendingTo || locked}
+                onClick={() => change(guild)}
+              >
+                Rejoindre
+              </button>
+            </div>
+          ))}
+        </div>
         {error && <p className="error">{error}</p>}
-      </section>
+      </details>
     </>
   )
 }
@@ -387,32 +405,35 @@ function RiftPanel() {
   if (!overview) return null
   const [today, ...next] = overview.calendar
   return (
-    <section className="panel" aria-label="La Faille">
-      <div className="row" style={{ justifyContent: 'space-between' }}>
-        <h2>
-          <Entity kind="rift" /> {today.name}
-        </h2>
-        <button className="link" type="button" onClick={refresh}>
-          Actualiser
-        </button>
+    <section className="panel rift-card" aria-label="La Faille">
+      <div className="rift-portal" aria-hidden="true">
+        <Entity kind="rift" />
       </div>
+      <p className="page-kicker">La Faille du jour</p>
+      <h2 className="rift-name">{today.name}</h2>
       <p className="muted">
         Un donjon sans fin, le même pour toutes les guildes aujourd'hui : chaque étage est plus
         difficile que le précédent, et un boss garde un étage sur cinq. Une seule expédition par
         joueur et par jour.
       </p>
       {overview.enteredToday ? (
-        <p className="muted">Vous avez déjà affronté la Faille aujourd'hui : revenez demain.</p>
+        <p className="notice">Vous avez déjà affronté la Faille aujourd'hui : revenez demain.</p>
       ) : (
-        <div className="row">
+        <div className="rift-cta">
           <RoleSelect value={role} onChange={setRole} />
           <button type="button" onClick={open}>
-            Ouvrir une expédition
+            <Entity kind="rift" /> Ouvrir une expédition
           </button>
         </div>
       )}
       {error && <p className="error">{error}</p>}
-      <h3>Expéditions ouvertes de la guilde</h3>
+
+      <div className="row" style={{ justifyContent: 'space-between' }}>
+        <h3>Expéditions ouvertes de la guilde</h3>
+        <button className="link" type="button" onClick={refresh}>
+          Actualiser
+        </button>
+      </div>
       {overview.runs.length === 0 && <p className="muted">Aucune expédition ouverte.</p>}
       <ul className="games">
         {overview.runs.map((run) => (
@@ -423,15 +444,17 @@ function RiftPanel() {
                 ({run.heroCount}/{MAX_HEROES} héros)
               </span>
             </span>
-            <Link href={`/guild/rift/${run.runId}`}>Voir</Link>
+            <Link href={`/guild/rift/${run.runId}`}>Rejoindre</Link>
           </li>
         ))}
       </ul>
+
       <h3>Les jours suivants</h3>
-      <ul className="log">
+      <ul className="rift-days">
         {next.map(({ day, name }) => (
           <li key={day}>
-            <span className="muted">{dateOf(day)} :</span> {name}
+            <span>{dateOf(day)}</span>
+            {name.replace('La Faille ', '')}
           </li>
         ))}
       </ul>
@@ -761,7 +784,7 @@ function GuildRankingPanel({ guild }: { guild: GuildId }) {
       <table className="ranking">
         <thead>
           <tr>
-            <th>Rang</th>
+            <th aria-label="Rang">#</th>
             <th>Guilde</th>
             <th>Aujourd'hui</th>
             <th>Record</th>
@@ -775,10 +798,10 @@ function GuildRankingPanel({ guild }: { guild: GuildId }) {
                 <GuildName guild={standing.guild} />
               </td>
               <td>
-                {standing.today}{' '}
-                <span className="muted">
-                  ({standing.todayRuns} expédition{standing.todayRuns > 1 ? 's' : ''})
-                </span>
+                {standing.today}
+                <small className="muted">
+                  {standing.todayRuns} expédition{standing.todayRuns > 1 ? 's' : ''}
+                </small>
               </td>
               <td>{standing.allTime}</td>
             </tr>
