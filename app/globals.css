@@ -209,26 +209,82 @@ label { font-family: var(--font-display), serif; font-size: 0.8rem; letter-spaci
 }
 .building:last-of-type { border-bottom: 0; }
 
-/* Navigation de l'espace de jeu : une barre de fer, bordée de la couleur de la guilde. */
+/* Cadre du jeu : en-tête de fer, souligné de la couleur de la guilde, puis la navigation. */
+.shell {
+  margin: -24px -16px 20px;
+  background: linear-gradient(180deg, #070605, var(--stone));
+  border-bottom: 2px solid var(--guild);
+  box-shadow: 0 8px 22px rgb(0 0 0 / 0.55);
+}
+.shell-top {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 16px 10px;
+}
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-display), serif;
+  font-weight: 700;
+  font-size: 1.15rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--parchment);
+}
+.brand svg { color: var(--gold); width: 1.3em; height: 1.3em; }
+.shell-player { margin-left: auto; display: inline-flex; align-items: center; gap: 10px; text-align: right; }
+.shell-player .entity-icon { width: 1.9em; height: 1.9em; }
+.shell-player span { display: grid; line-height: 1.15; color: var(--parchment); }
+.shell-player small {
+  font-family: var(--font-display), serif;
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--guild-bright);
+}
+.shell-actions { display: inline-flex; align-items: center; gap: 12px; padding-left: 12px; border-left: 1px solid var(--iron); }
+.shell-actions a,
+.shell-actions button { color: var(--muted); font-size: 1.35rem; display: inline-flex; }
+.shell-actions a:hover,
+.shell-actions button:hover,
+.shell-actions a[aria-current='page'] { color: var(--parchment); }
+
 .nav {
   display: flex;
-  gap: 4px 18px;
-  align-items: center;
-  flex-wrap: wrap;
-  margin: 0 -16px 18px;
-  padding: 12px 16px;
-  background: linear-gradient(180deg, var(--stone), rgb(0 0 0 / 0.6));
-  border-bottom: 2px solid var(--guild);
-  box-shadow: 0 6px 18px rgb(0 0 0 / 0.5);
+  gap: 4px;
+  padding: 0 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
   font-family: var(--font-display), serif;
-  font-size: 0.82rem;
-  letter-spacing: 0.06em;
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
-.nav a { color: var(--muted); text-decoration: none; padding: 4px 0; border-bottom: 2px solid transparent; }
+.nav a {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px 9px;
+  color: var(--muted);
+  text-decoration: none;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+}
 .nav a:hover { color: var(--parchment); }
-.nav a[aria-current='page'] { color: var(--parchment); border-bottom-color: var(--guild-bright); }
-.nav .muted { text-transform: none; font-family: var(--font-body), serif; letter-spacing: 0; font-size: 0.95rem; }
+.nav a[aria-current='page'] {
+  color: var(--parchment);
+  border-bottom-color: var(--guild-bright);
+  background: linear-gradient(0deg, color-mix(in srgb, var(--guild) 30%, transparent), transparent);
+}
+@media (max-width: 560px) {
+  .brand span, .shell-player small { display: none; }
+  .shell-top { gap: 10px; }
+  .shell-player span { max-width: 9em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
 
 /* Indicateur de connexion temps réel. */
 .status { font-size: 0.85rem; color: var(--muted); font-style: italic; }
