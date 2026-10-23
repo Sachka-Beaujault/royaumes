@@ -80,7 +80,8 @@ Un module n'est accessible depuis l'extérieur que par ses entrées publiques : 
 | `dungeon` | Donjon : expéditions de un à quatre héros, compagnons pilotés par l'ordinateur, deux niveaux de difficulté, combats en manches simultanées | `/api/dungeon` |
 | `ranking` | Classement des joueurs, construit à partir des événements du Village et du Donjon | `/api/ranking` |
 | `market` | Marché : échanges de ressources entre joueurs, par une saga orchestrée | `/api/market` |
-| `tavern` | Taverne : salon de discussion commun et présence des joueurs, sans Event Sourcing | `/api/tavern` |
+| `tavern` | Taverne : salon de discussion commun et présence des joueurs, sans Event Sourcing ; chaque auteur y porte l'emblème de sa guilde | `/api/tavern` |
+| `guild` | Guildes : trois guildes fixes, choisies dès l'entrée dans le jeu, changement payé en or au Village ; chat réservé aux membres ; la Faille, donjon quotidien et sans fin aux rôles tank, soigneur et attaquant ; classement des guildes | `/api/guild` |
 
 ## Temps réel
 
@@ -97,7 +98,18 @@ enregistrés après leur ouverture.
 Le canal `tavern` ne lit pas le journal, mais la table des messages de la Taverne : il
 transmet chaque nouveau message, avec son contenu, à tous les joueurs connectés.
 
-Les canaux du Donjon, du Classement et du Marché sont discrets : ils ne transmettent que la position,
+La Guilde déclare trois sortes de canaux :
+
+- `guild-chat-<guilde>` (`guild-chat-red`, `guild-chat-green`, `guild-chat-blue`) : le chat
+  d'une guilde, réservé à ses membres. Comme celui de la Taverne, il lit la table des messages,
+  et transmet chaque message avec son contenu ;
+- `guild-rift-<expédition>` : une expédition de la Faille, réservée à ses héros, et discrète
+  comme celles du Donjon ;
+- `guild-ranking` : le classement des guildes, canal global et discret, ouvert à tout joueur
+  connecté.
+
+Les canaux du Donjon, du Classement, du Marché, ainsi que ceux de la Faille et du classement
+des guildes, sont discrets : ils ne transmettent que la position,
 le type et la version des événements, et chaque navigateur relit sa propre vue, filtrée
 par le serveur.
 
@@ -115,6 +127,12 @@ chaque consultation du Marché, et chaque jour par la tâche planifiée `/api/cr
 est garantie au moins une fois : les gestionnaires de messages sont idempotents. Un message qui
 échoue dix fois est abandonné : la tâche quotidienne le signale, et le script
 `scripts/dead-letters.ts` permet de l'examiner, puis de le relancer une fois sa cause corrigée.
+
+Un changement de guilde suit le même principe (ADR 0011) : la Guilde demande au Village de
+prélever 50 pièces d'or, puis confirme le changement à la réception de l'or, ou rembourse
+celui-ci si le joueur a rejoint la Faille pendant l'attente. La Taverne, elle, présente la
+guilde de chaque auteur par un port, que la racine de composition met en œuvre avec le lecteur
+public de la Guilde (ADR 0014).
 
 ## Service Village extrait
 
@@ -145,6 +163,13 @@ Les messages de la Taverne sont conservés trente jours, et la présence d'un jo
 minutes après son dernier signal. Ces durées sont appliquées à chaque lecture, et chaque jour
 par la tâche planifiée `/api/cron/daily`.
 
+La Guilde conserve l'appartenance du joueur et l'historique de ses changements et de ses
+participations à la Faille, sans son nom ; ses messages dans le chat de sa guilde, conservés
+trente jours comme ceux de la Taverne ; et son nom, copié dans les expéditions de la Faille
+qu'il a ouvertes ou rejointes. L'export présente ces données, et l'effacement supprime ses
+messages et remplace son nom dans les expéditions. Le classement des guildes ne contient aucune
+donnée personnelle.
+
 ## Base de données
 
 En développement, la base PostgreSQL est fournie par PGlite et conservée dans le répertoire
@@ -153,8 +178,9 @@ démarrage. Pour repartir d'une base vide, arrêtez le serveur et supprimez le r
 
 Les tests utilisent une base PGlite en mémoire, recréée pour chaque fichier de test.
 
-Le classement et la liste des expéditions ouvertes sont des modèles de lecture, tenus à jour
-par des projections à partir du journal d'événements (ADR 0006). Chaque projection est
+Le classement, la liste des expéditions ouvertes du Donjon et de la Faille, et le classement
+des guildes sont des modèles de lecture, tenus à jour par des projections à partir du journal
+d'événements (ADR 0006, ADR 0013). Chaque projection est
 rattrapée à la consultation, et reconstruite automatiquement lorsque sa version change :
 une modification qui change le contenu de ses tables doit donc augmenter sa version.
 
@@ -191,6 +217,7 @@ sans la première ; sans la seconde, la route des tâches quotidiennes reste fer
 - [Registre des traitements](docs/rgpd/registre-traitements.md)
 - [Revue de conformité au RGPD](docs/rgpd/revue-conformite.md)
 - [Bilan technique](docs/bilan-technique.md)
+- [Fiche de cadrage du module Guilde](docs/evaluation/fiche-cadrage.md)
 
 ## Conventions
 
@@ -220,6 +247,18 @@ quotidienne.
 L'effacement d'un compte parcourt tout le journal d'événements : sa durée croît avec la taille
 du journal. L'identifiant d'un joueur effacé reste dans le journal, sous une forme
 pseudonymisée : plus aucune table ne le relie à une personne (ADR 0008).
+
+La Faille d'un jour est la même pour toutes les guildes, et ses monstres ne s'adaptent pas au
+nombre de héros : un groupe de quatre joueurs va nettement plus loin qu'un joueur seul. Son
+contenu, comme les résultats d'une même suite d'actions, peut être communiqué par les premiers
+joueurs du jour aux guildes suivantes (ADR 0012). Une expédition abandonnée n'entre au
+classement des guildes que le lendemain matin, après la tâche quotidienne (ADR 0013).
+
+Le choix d'une guilde n'est imposé que par l'interface : les API des autres modules restent
+accessibles à un joueur sans guilde. Un joueur qui change de guilde reçoit encore le chat de son
+ancienne guilde jusqu'à la fermeture de son flux, au plus quatre minutes. La guilde d'un joueur
+est reconstruite à partir de son flux à chaque page, et celle des auteurs de la Taverne à chaque
+présentation des messages (dettes DT-018, DT-014, DT-019 et DT-020).
 
 Le service Village extrait n'est pas prêt pour la production : ses migrations, la pagination
 de son flux publié et la distribution de sa boîte d'envoi restent à traiter. Ces limites, et

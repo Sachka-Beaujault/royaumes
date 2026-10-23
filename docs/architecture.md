@@ -12,7 +12,7 @@ dans le même commit que la modification qu'ils décrivent.
 ```mermaid
 flowchart TB
   joueur["Joueur<br/>[Personne]<br/>Joue depuis un navigateur,<br/>sur ordinateur ou sur téléphone"]
-  royaumes["Royaumes<br/>[Système logiciel]<br/>Jeu web multijoueur : village, donjon,<br/>classement, marché et taverne"]
+  royaumes["Royaumes<br/>[Système logiciel]<br/>Jeu web multijoueur : village, donjon,<br/>classement, marché, taverne et guildes"]
   joueur -->|"Gère son village, joue avec les autres joueurs,<br/>reçoit les changements en direct (HTTPS)"| royaumes
 ```
 
@@ -28,7 +28,7 @@ flowchart TB
   subgraph royaumes["Système Royaumes"]
     web["Interface web<br/>[Conteneur : React, dans le navigateur]<br/>Pages du jeu et page de connexion"]
     serveur["Application serveur<br/>[Conteneur : Next.js et Hono, fonctions Vercel, Francfort]<br/>Rendu des pages, API JSON,<br/>authentification, flux temps réel"]
-    base[("Base de données<br/>[Conteneur : PostgreSQL, Neon, Francfort]<br/>Schéma platform : journal, points de reprise,<br/>boîte d'envoi, registre des effacements<br/>Schéma identity : comptes et sessions<br/>Schémas ranking, dungeon et market :<br/>modèles de lecture<br/>Schéma tavern : messages et présence")]
+    base[("Base de données<br/>[Conteneur : PostgreSQL, Neon, Francfort]<br/>Schéma platform : journal, points de reprise,<br/>boîte d'envoi, registre des effacements<br/>Schéma identity : comptes et sessions<br/>Schémas ranking, dungeon et market :<br/>modèles de lecture<br/>Schéma tavern : messages et présence<br/>Schéma guild : messages des chats,<br/>expéditions ouvertes et classement des guildes")]
   end
   joueur -->|"Utilise"| web
   web -->|"Pages, appels de l'API avec le cookie de session<br/>(HTTPS, JSON)"| serveur
@@ -42,10 +42,14 @@ flowchart TB
 | Application serveur | Next.js, Hono, Better Auth, Drizzle | Contrôle d'accès, règles du jeu, enregistrement des événements, diffusion des flux |
 | Base de données | PostgreSQL (Neon en production, PGlite en local et en test) | Conservation du journal d'événements, des comptes et des sessions ; modèles de lecture des modules |
 
-Le journal d'événements est la seule source de vérité des modules Village, Donjon et Marché.
+Le journal d'événements est la seule source de vérité des modules Village, Donjon et Marché,
+ainsi que de l'appartenance aux guildes et des expéditions de la Faille.
 La Taverne n'enregistre pas d'événements : ses tables sont sa propre source de vérité (ADR 0008).
-Les tables des schémas `ranking`, `dungeon` et `market` sont des modèles de lecture, dérivés du journal par des projections : elles peuvent
-être vidées puis reconstruites à tout moment, sans perte d'information.
+La Guilde combine les deux modèles : la table `guild.messages` est la seule source de vérité de
+ses chats, destinés à disparaître (ADR 0010).
+Les tables des schémas `ranking`, `dungeon` et `market`, ainsi que les tables `guild.open_runs`
+et `guild.ranking`, sont des modèles de lecture, dérivés du journal par des projections : elles
+peuvent être vidées puis reconstruites à tout moment, sans perte d'information.
 
 L'interface web ne communique jamais directement avec la base : toute lecture et toute
 écriture passent par l'application serveur, qui applique le contrôle d'accès.
@@ -66,7 +70,8 @@ flowchart TB
     dungeon["dungeon<br/>Donjon : domaine et IA, service,<br/>dépôt fondé sur le journal, API, canal discret,<br/>projection des expéditions ouvertes"]
     ranking["ranking<br/>Classement : projection,<br/>lecture, API, canal global"]
     market["market<br/>Marché : orchestrateur de la saga,<br/>projection des offres, API, canal global"]
-    tavern["tavern<br/>Taverne : messages et présence<br/>en tables, API, canal à source propre"]
+    tavern["tavern<br/>Taverne : messages et présence<br/>en tables, API, canal à source propre,<br/>port AuthorGuilds"]
+    guild["guild<br/>Guilde : appartenance et saga de changement,<br/>chats en tables, la Faille,<br/>projections des expéditions et du classement,<br/>API, canaux, lecteur public"]
   end
   subgraph platform["src/platform"]
     auth["auth<br/>Port AuthPort,<br/>adaptateur Better Auth"]
@@ -83,13 +88,15 @@ flowchart TB
   route --> server
   pages --> server
   server --> createapi
-  createapi --> system & realm & dungeon & ranking & market & tavern & auth & http & realtime & projection & outbox & privacy & cron
+  createapi --> system & realm & dungeon & ranking & market & tavern & guild & auth & http & realtime & projection & outbox & privacy & cron
   realm --> store & realtime & http & outbox
   market --> store & projection & realtime & http & outbox
   dungeon --> store & projection & realtime & http
   ranking --> projection & realtime & http
   tavern --> realtime & http & db
-  realm & dungeon & market & ranking & tavern --> privacy
+  guild --> store & projection & realtime & http & outbox & db
+  tavern -. "port AuthorGuilds,<br/>branché par create-api.ts" .-> guild
+  realm & dungeon & market & ranking & tavern & guild --> privacy
   privacy --> store
   auth --> privacy
   realtime --> store & http
@@ -116,6 +123,51 @@ des messages dans la boîte d'envoi, que le distributeur remet aux gestionnaires
 La seule dépendance directe porte sur les contrats du Village (`REALM_TOPICS`, `ResourceAmounts`),
 qui décrivent ces messages. Chaque transaction ne modifie que les données d'un seul module,
 et la boîte d'envoi (ADR 0007).
+
+Le module `guild` communique avec deux modules existants, sans importer aucun de leurs fichiers
+internes :
+
+- avec le **Village**, par la boîte d'envoi : un changement de guilde est une saga orchestrée par
+  la Guilde, qui demande au Village de prélever 50 pièces d'or (`realm.withdraw`), attend sa
+  réponse (`guild.transfer-result`), puis confirme le changement, ou rembourse l'or
+  (`realm.deposit`) si le joueur a rejoint la Faille pendant l'attente (ADR 0011). La Guilde ne
+  dépend que des contrats du Village, et le Village n'a pas été modifié ;
+- avec la **Taverne**, par un port : la Taverne définit le port `AuthorGuilds`, dont la racine de
+  composition lui fournit la mise en œuvre, le lecteur public de la Guilde. La Taverne présente
+  ainsi la guilde actuelle de chaque auteur sans dépendre de la Guilde, et la Guilde ignore
+  la Taverne (ADR 0014).
+
+La séquence suivante présente un changement de guilde, qui traverse la Guilde, la boîte
+d'envoi et le Village :
+
+```mermaid
+sequenceDiagram
+  actor J as Joueur
+  participant G as Guilde (API et service)
+  participant J1 as Journal (flux guild-member-*)
+  participant O as Boîte d'envoi
+  participant V as Village
+  J->>G: POST /api/guild/change
+  G->>J1: ChangeRequested, et le message realm.withdraw<br/>(une seule transaction)
+  G->>O: distribution
+  O->>V: realm.withdraw (50 or, mouvement change-n)
+  V->>V: ResourcesWithdrawn, ou WithdrawalRefused
+  V->>O: guild.transfer-result (withdrawn ou refused)
+  O->>G: guild.transfer-result
+  alt or prélevé, joueur absent de la Faille
+    G->>J1: GuildChanged
+  else or prélevé, joueur entré dans la Faille pendant l'attente
+    G->>J1: ChangeCancelled (locked), et le message realm.deposit
+    O->>V: realm.deposit (50 or, mouvement refund-n)
+  else or insuffisant
+    G->>J1: ChangeCancelled (refused)
+  end
+  G-->>J: vue de l'appartenance
+```
+
+Dans le cas ordinaire, la distribution déclenchée par la commande mène la saga à son terme
+avant la réponse au joueur. Si elle est interrompue, la saga reprend à la consultation suivante
+de la Guilde, ou lors de la tâche quotidienne.
 
 Chaque module déclare ses données personnelles à la brique `privacy`, au moyen d'un fichier
 `personal-data.ts` : il les exporte, désigne les champs personnels de ses événements, et les
@@ -185,8 +237,10 @@ Chaque envoi sur la branche `main` déclenche un déploiement. Le code n'est pub
 l'ensemble des contrôles a réussi, et les migrations ne sont appliquées qu'après ces contrôles.
 
 La tâche planifiée, déclarée dans `vercel.json`, exécute chaque jour les tâches quotidiennes :
-la distribution des messages restés en attente dans la boîte d'envoi, et l'application des
-durées de conservation de la Taverne. Elle ne s'exécute que sur le déploiement de production.
+la distribution des messages restés en attente dans la boîte d'envoi, l'application des
+durées de conservation de la Taverne et des chats de guilde, et la clôture des expéditions de la
+Faille abandonnées les jours précédents (ADR 0013). Elle ne s'exécute que sur le déploiement de
+production.
 
 Le service Village extrait n'est pas déployé : en production, le Village s'exécute dans
 les fonctions Vercel, comme les autres modules (ADR 0009).
